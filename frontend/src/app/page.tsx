@@ -1,7 +1,5 @@
 import { ChatLayout } from "@/components/chat";
 
-export function App() {
+export default function Home() {
   return <ChatLayout />;
 }
-
-export default App;

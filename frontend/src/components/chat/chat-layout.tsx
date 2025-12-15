@@ -1,13 +1,24 @@
+"use client";
+
 import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
+import {
+  SignedIn,
+  SignedOut,
+  SignInButton,
+  UserButton,
+  useUser,
+} from "@clerk/nextjs"
 import { ChatMessage, type Message } from "./chat-message"
 import { ChatInput } from "./chat-input"
 import { Button } from "@/components/ui/button"
-import { SpotifyIcon } from "@/components/icons/spotify"
+import { LogInIcon } from "lucide-react"
 
 export function ChatLayout() {
+  const { isLoaded, isSignedIn, user } = useUser()
   const [messages, setMessages] = React.useState<Message[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
+  const [showSignInPrompt, setShowSignInPrompt] = React.useState(false)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
 
   const hasMessages = messages.length > 0
@@ -21,6 +32,11 @@ export function ChatLayout() {
   }, [messages])
 
   const handleSend = async (content: string) => {
+    if (!isSignedIn) {
+      setShowSignInPrompt(true)
+      return
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -56,10 +72,25 @@ export function ChatLayout() {
               <a href="/" className="text-lg font-semibold hover:opacity-80 transition-opacity">
                 Nori
               </a>
-              <Button variant="outline" size="sm" className="gap-2">
-                <SpotifyIcon className="size-4" />
-                Connect Spotify
-              </Button>
+              {!isLoaded ? (
+                <Button variant="outline" size="sm" disabled>
+                  Loading...
+                </Button>
+              ) : (
+                <>
+                  <SignedIn>
+                    <UserButton />
+                  </SignedIn>
+                  <SignedOut>
+                    <SignInButton mode="modal">
+                      <Button variant="outline" size="sm" className="gap-2">
+                        <LogInIcon className="size-4" />
+                        Sign In
+                      </Button>
+                    </SignInButton>
+                  </SignedOut>
+                </>
+              )}
             </div>
           </motion.header>
         )}
@@ -133,6 +164,26 @@ export function ChatLayout() {
             disabled={isLoading}
             placeholder={hasMessages ? "Type a message..." : "Ask anything..."}
           />
+          <AnimatePresence>
+            {showSignInPrompt && !isSignedIn && (
+              <motion.div
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: 10 }}
+                className="mt-3 p-3 bg-muted rounded-lg flex items-center justify-between"
+              >
+                <span className="text-sm text-muted-foreground">
+                  Sign in to start chatting
+                </span>
+                <SignInButton mode="modal">
+                  <Button size="sm" className="gap-2">
+                    <LogInIcon className="size-4" />
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </motion.div>
 
         {!hasMessages && <div className="flex-1" />}
