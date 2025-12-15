@@ -29,6 +29,28 @@ export function ChatInput({
 		}
 	};
 
+	React.useEffect(() => {
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (
+				document.activeElement === textareaRef.current ||
+				e.metaKey ||
+				e.ctrlKey ||
+				e.altKey ||
+				e.key === "Tab" ||
+				e.key === "Escape"
+			) {
+				return;
+			}
+
+			if (e.key.length === 1) {
+				textareaRef.current?.focus();
+			}
+		};
+
+		document.addEventListener("keydown", handleKeyDown);
+		return () => document.removeEventListener("keydown", handleKeyDown);
+	}, []);
+
 	const showButton = value.trim().length > 0;
 
 	return (
@@ -51,6 +73,7 @@ export function ChatInput({
 					onSubmit={handleSubmit}
 					placeholder={placeholder}
 					disabled={disabled}
+					autoFocus
 					className="min-h-[24px] max-h-[200px] py-1 px-1"
 				/>
 			</motion.div>
