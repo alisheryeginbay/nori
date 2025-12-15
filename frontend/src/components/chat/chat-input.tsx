@@ -1,5 +1,5 @@
 import { ArrowUp } from "lucide-react";
-import { motion, AnimatePresence } from "motion/react";
+import { AnimatePresence, motion } from "motion/react";
 import * as React from "react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -57,7 +57,7 @@ export function ChatInput({
 		<div className={cn("flex items-end gap-3", className)}>
 			<motion.div
 				layout
-				transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+				transition={{ type: "spring", stiffness: 500, damping: 30 }}
 				onClick={() => textareaRef.current?.focus()}
 				className={cn(
 					"flex-1 flex items-end p-3 rounded-2xl cursor-text",
@@ -86,7 +86,7 @@ export function ChatInput({
 						initial={{ opacity: 0, scale: 0.5 }}
 						animate={{ opacity: 1, scale: 1 }}
 						exit={{ opacity: 0, scale: 0.5 }}
-						transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+						transition={{ type: "spring", stiffness: 500, damping: 30 }}
 					>
 						<Button
 							type="button"
