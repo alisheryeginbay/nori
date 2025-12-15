@@ -61,8 +61,8 @@ export function ChatInput({
 				onClick={() => textareaRef.current?.focus()}
 				className={cn(
 					"flex-1 flex items-end p-3 rounded-2xl cursor-text",
-					"bg-white backdrop-blur-xl",
-					"border border-white/20 dark:border-white/10",
+					"bg-card backdrop-blur-xl",
+					"border border-border",
 					"ring-1 ring-black/5 dark:ring-white/5",
 				)}
 			>
