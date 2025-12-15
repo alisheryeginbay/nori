@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { motion } from "motion/react"
-import { SignInButton, useClerk } from "@clerk/nextjs"
+import { useSignIn } from "@clerk/nextjs"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { ChatMessage, type Message } from "./chat-message"
 import { ChatInput } from "./chat-input"
 import { RepoList } from "./repo-list"
 import { Button } from "@/components/ui/button"
-import { LogInIcon } from "lucide-react"
+import { GithubIcon } from "lucide-react"
 
 interface ChatLayoutProps {
   user: SerializedUser | null
@@ -18,7 +18,7 @@ export function ChatLayout({ user }: ChatLayoutProps) {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
-  const { openSignIn } = useClerk()
+  const { signIn, isLoaded } = useSignIn()
 
   const hasMessages = messages.length > 0
 
@@ -30,9 +30,18 @@ export function ChatLayout({ user }: ChatLayoutProps) {
     scrollToBottom()
   }, [messages])
 
+  const signInWithGitHub = async () => {
+    if (!isLoaded || !signIn) return
+    await signIn.authenticateWithRedirect({
+      strategy: "oauth_github",
+      redirectUrl: "/sso-callback",
+      redirectUrlComplete: "/",
+    })
+  }
+
   const handleSend = async (content: string) => {
     if (!user) {
-      openSignIn()
+      signInWithGitHub()
       return
     }
 
@@ -66,12 +75,16 @@ export function ChatLayout({ user }: ChatLayoutProps) {
           {user ? (
             <UserMenu user={user} />
           ) : (
-            <SignInButton mode="modal">
-              <Button variant="outline" size="sm" className="gap-2">
-                <LogInIcon className="size-4" />
-                Sign In
-              </Button>
-            </SignInButton>
+            <Button
+              variant="outline"
+              size="sm"
+              className="gap-2"
+              onClick={signInWithGitHub}
+              disabled={!isLoaded}
+            >
+              <GithubIcon className="size-4" />
+              Sign in with GitHub
+            </Button>
           )}
         </div>
       </header>
