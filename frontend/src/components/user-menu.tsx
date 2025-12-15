@@ -1,6 +1,6 @@
 "use client"
 
-import { useUser, useClerk } from "@clerk/nextjs"
+import { useClerk } from "@clerk/nextjs"
 import { UserIcon, LogOutIcon } from "lucide-react"
 import {
   DropdownMenu,
@@ -12,15 +12,25 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 
-export function UserMenu() {
-  const { user } = useUser()
-  const { signOut, openUserProfile } = useClerk()
+export interface SerializedUser {
+  id: string
+  firstName: string | null
+  lastName: string | null
+  fullName: string | null
+  imageUrl: string
+  email: string | null
+}
 
-  if (!user) return null
+interface UserMenuProps {
+  user: SerializedUser
+}
+
+export function UserMenu({ user }: UserMenuProps) {
+  const { signOut, openUserProfile } = useClerk()
 
   const initials = user.firstName && user.lastName
     ? `${user.firstName[0]}${user.lastName[0]}`
-    : user.emailAddresses[0]?.emailAddress?.[0]?.toUpperCase() ?? "U"
+    : user.email?.[0]?.toUpperCase() ?? "U"
 
   return (
     <DropdownMenu>
@@ -35,12 +45,32 @@ export function UserMenu() {
           <span className="text-sm font-medium">{initials}</span>
         )}
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" sideOffset={8}>
+      <DropdownMenuContent align="end" sideOffset={8} className="min-w-56">
         <DropdownMenuGroup>
           <DropdownMenuLabel className="font-normal">
-            <span className="text-xs text-muted-foreground">
-              {user.emailAddresses[0]?.emailAddress}
-            </span>
+            <div className="flex items-center gap-3">
+              <div className="size-9 rounded-full bg-muted overflow-hidden shrink-0">
+                {user.imageUrl ? (
+                  <img
+                    src={user.imageUrl}
+                    alt={user.fullName ?? "User"}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <div className="size-full flex items-center justify-center">
+                    <span className="text-sm font-medium">{initials}</span>
+                  </div>
+                )}
+              </div>
+              <div className="flex flex-col">
+                <span className="text-sm font-medium text-foreground">
+                  {user.fullName ?? user.firstName ?? "User"}
+                </span>
+                <span className="text-xs text-muted-foreground">
+                  {user.email}
+                </span>
+              </div>
+            </div>
           </DropdownMenuLabel>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
