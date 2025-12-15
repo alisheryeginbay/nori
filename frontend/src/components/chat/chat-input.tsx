@@ -36,8 +36,9 @@ export function ChatInput({
 			<motion.div
 				layout
 				transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+				onClick={() => textareaRef.current?.focus()}
 				className={cn(
-					"flex-1 flex items-end p-3 rounded-2xl",
+					"flex-1 flex items-end p-3 rounded-2xl cursor-text",
 					"bg-white backdrop-blur-xl",
 					"border border-white/20 dark:border-white/10",
 					"ring-1 ring-black/5 dark:ring-white/5",
