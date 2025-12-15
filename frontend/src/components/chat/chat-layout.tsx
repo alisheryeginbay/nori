@@ -9,12 +9,14 @@ import { ChatInput } from "./chat-input"
 import { RepoList } from "./repo-list"
 import { Button } from "@/components/ui/button"
 import { GithubIcon } from "lucide-react"
+import type { GitHubRepo } from "@/app/api/github/repos/route"
 
 interface ChatLayoutProps {
   user: SerializedUser | null
+  repos: GitHubRepo[]
 }
 
-export function ChatLayout({ user }: ChatLayoutProps) {
+export function ChatLayout({ user, repos }: ChatLayoutProps) {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
@@ -167,14 +169,10 @@ export function ChatLayout({ user }: ChatLayoutProps) {
         </div>
 
         {/* Repo list */}
-        {user && !hasMessages && (
-          <motion.div
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="shrink-0 w-full max-w-[1000px] mx-auto px-4"
-          >
-            <RepoList />
-          </motion.div>
+        {repos.length > 0 && !hasMessages && (
+          <div className="shrink-0 w-full max-w-[1000px] mx-auto px-4">
+            <RepoList repos={repos} />
+          </div>
         )}
 
         {/* Bottom spacer - grows on home */}

@@ -1,84 +1,26 @@
-"use client";
-
-import * as React from "react";
-import { motion } from "motion/react";
 import { Star, Lock, Globe } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { GitHubRepo } from "@/app/api/github/repos/route";
 
 interface RepoListProps {
+  repos: GitHubRepo[];
   className?: string;
 }
 
-export function RepoList({ className }: RepoListProps) {
-  const [repos, setRepos] = React.useState<GitHubRepo[]>([]);
-  const [isLoading, setIsLoading] = React.useState(true);
-  const [error, setError] = React.useState<string | null>(null);
-
-  React.useEffect(() => {
-    async function fetchRepos() {
-      try {
-        const response = await fetch("/api/github/repos");
-        if (!response.ok) {
-          if (response.status === 401 || response.status === 404) {
-            setRepos([]);
-            return;
-          }
-          throw new Error("Failed to fetch repos");
-        }
-        const data = await response.json();
-        setRepos(data);
-      } catch (err) {
-        setError(err instanceof Error ? err.message : "Failed to load repos");
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchRepos();
-  }, []);
-
-  if (isLoading) {
-    return (
-      <div className={cn("grid grid-cols-4 gap-2", className)}>
-        {[...Array(4)].map((_, i) => (
-          <div
-            key={i}
-            className="h-[72px] rounded-xl bg-muted animate-pulse"
-          />
-        ))}
-      </div>
-    );
-  }
-
-  if (error || repos.length === 0) {
-    return null;
-  }
-
+export function RepoList({ repos, className }: RepoListProps) {
   return (
     <div className={cn("grid grid-cols-4 gap-2", className)}>
-      {repos.slice(0, 8).map((repo, index) => (
-        <motion.a
+      {repos.slice(0, 8).map((repo) => (
+        <a
           key={repo.id}
           href={repo.html_url}
           target="_blank"
           rel="noopener noreferrer"
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{
-            type: "spring",
-            stiffness: 500,
-            damping: 30,
-            delay: index * 0.03,
-          }}
-          whileHover={{ scale: 1.02 }}
-          whileTap={{ scale: 0.98 }}
           className={cn(
             "flex flex-col gap-1.5 p-3 rounded-xl",
             "bg-card border border-border",
             "hover:border-foreground/20 hover:bg-accent/50",
-            "transition-colors duration-200",
-            "cursor-pointer"
+            "transition-colors duration-200"
           )}
         >
           <div className="flex items-center gap-2">
@@ -115,7 +57,7 @@ export function RepoList({ className }: RepoListProps) {
               </div>
             )}
           </div>
-        </motion.a>
+        </a>
       ))}
     </div>
   );
