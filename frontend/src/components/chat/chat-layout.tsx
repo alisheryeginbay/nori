@@ -1,15 +1,14 @@
 "use client";
 
 import * as React from "react"
-import { motion, AnimatePresence } from "motion/react"
-import { SignInButton } from "@clerk/nextjs"
+import { motion } from "motion/react"
+import { SignInButton, useClerk } from "@clerk/nextjs"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { ChatMessage, type Message } from "./chat-message"
 import { ChatInput } from "./chat-input"
 import { RepoList } from "./repo-list"
 import { Button } from "@/components/ui/button"
 import { LogInIcon } from "lucide-react"
-import { cn } from "@/lib/utils"
 
 interface ChatLayoutProps {
   user: SerializedUser | null
@@ -18,8 +17,8 @@ interface ChatLayoutProps {
 export function ChatLayout({ user }: ChatLayoutProps) {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
-  const [showSignInPrompt, setShowSignInPrompt] = React.useState(false)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const { openSignIn } = useClerk()
 
   const hasMessages = messages.length > 0
 
@@ -33,7 +32,7 @@ export function ChatLayout({ user }: ChatLayoutProps) {
 
   const handleSend = async (content: string) => {
     if (!user) {
-      setShowSignInPrompt(true)
+      openSignIn()
       return
     }
 
@@ -152,26 +151,6 @@ export function ChatLayout({ user }: ChatLayoutProps) {
             disabled={isLoading}
             placeholder="Ask anything..."
           />
-          <AnimatePresence>
-            {showSignInPrompt && !user && (
-              <motion.div
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-                className="mt-3 p-3 bg-muted rounded-lg flex items-center justify-between"
-              >
-                <span className="text-sm text-muted-foreground">
-                  Sign in to start chatting
-                </span>
-                <SignInButton mode="modal">
-                  <Button size="sm" className="gap-2">
-                    <LogInIcon className="size-4" />
-                    Sign In
-                  </Button>
-                </SignInButton>
-              </motion.div>
-            )}
-          </AnimatePresence>
         </div>
 
         {/* Repo list */}
