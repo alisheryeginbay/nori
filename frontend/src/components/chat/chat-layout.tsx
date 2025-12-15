@@ -6,9 +6,9 @@ import {
   SignedIn,
   SignedOut,
   SignInButton,
-  UserButton,
   useUser,
 } from "@clerk/nextjs"
+import { UserMenu } from "@/components/user-menu"
 import { ChatMessage, type Message } from "./chat-message"
 import { ChatInput } from "./chat-input"
 import { Button } from "@/components/ui/button"
@@ -59,42 +59,32 @@ export function ChatLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <AnimatePresence>
-        {hasMessages && (
-          <motion.header
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.5, delay: 0.3 }}
-            className="shrink-0 px-4 py-3"
-          >
-            <div className="max-w-[1000px] mx-auto flex items-center justify-between">
-              <a href="/" className="text-lg font-semibold hover:opacity-80 transition-opacity">
-                Nori
-              </a>
-              {!isLoaded ? (
-                <Button variant="outline" size="sm" disabled>
-                  Loading...
-                </Button>
-              ) : (
-                <>
-                  <SignedIn>
-                    <UserButton />
-                  </SignedIn>
-                  <SignedOut>
-                    <SignInButton mode="modal">
-                      <Button variant="outline" size="sm" className="gap-2">
-                        <LogInIcon className="size-4" />
-                        Sign In
-                      </Button>
-                    </SignInButton>
-                  </SignedOut>
-                </>
-              )}
-            </div>
-          </motion.header>
-        )}
-      </AnimatePresence>
+      <header className="shrink-0 px-4 py-3">
+        <div className="max-w-[1000px] mx-auto flex items-center justify-between">
+          <a href="/" className="text-lg font-semibold hover:opacity-80 transition-opacity">
+            Nori
+          </a>
+          {!isLoaded ? (
+            <Button variant="outline" size="sm" disabled>
+              Loading...
+            </Button>
+          ) : (
+            <>
+              <SignedIn>
+                <UserMenu />
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal">
+                  <Button variant="outline" size="sm" className="gap-2">
+                    <LogInIcon className="size-4" />
+                    Sign In
+                  </Button>
+                </SignInButton>
+              </SignedOut>
+            </>
+          )}
+        </div>
+      </header>
 
       <div className="flex-1 flex flex-col min-h-0">
         <AnimatePresence>
