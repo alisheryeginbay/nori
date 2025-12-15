@@ -138,11 +138,13 @@ export function ChatLayout({ user }: ChatLayoutProps) {
           }}
           className="shrink-0 w-full max-w-[1000px] mx-auto px-4 py-4"
         >
-          <ChatInput
-            onSend={handleSend}
-            disabled={isLoading}
-            placeholder={hasMessages ? "Type a message..." : "Ask anything..."}
-          />
+          <motion.div layout="position">
+            <ChatInput
+              onSend={handleSend}
+              disabled={isLoading}
+              placeholder="Ask anything..."
+            />
+          </motion.div>
           <AnimatePresence>
             {showSignInPrompt && !user && (
               <motion.div
