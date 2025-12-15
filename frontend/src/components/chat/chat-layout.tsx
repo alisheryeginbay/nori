@@ -86,7 +86,33 @@ export function ChatLayout({ user }: ChatLayoutProps) {
               className="absolute inset-0 flex items-center justify-center pointer-events-none"
               style={{ paddingBottom: "100px" }}
             >
-              <h1 className="text-2xl font-semibold">What can I help you with?</h1>
+              <h1 className="text-2xl font-semibold flex">
+                {"What can I help you with?".split("").map((char, index) => (
+                  <motion.span
+                    key={index}
+                    initial={{
+                      opacity: 0,
+                      scale: 0.75,
+                      filter: "blur(10px)",
+                      y: 20
+                    }}
+                    animate={{
+                      opacity: 1,
+                      scale: 1,
+                      filter: "blur(0px)",
+                      y: 0
+                    }}
+                    transition={{
+                      duration: 0.5,
+                      delay: index * 0.05,
+                      ease: [0.215, 0.61, 0.355, 1]
+                    }}
+                    className={char === " " ? "w-[0.3em]" : ""}
+                  >
+                    {char === " " ? "\u00A0" : char}
+                  </motion.span>
+                ))}
+              </h1>
             </motion.div>
           )}
         </AnimatePresence>
