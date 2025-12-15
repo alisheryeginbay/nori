@@ -1,0 +1,79 @@
+import { ArrowUp } from "lucide-react";
+import { motion, AnimatePresence } from "motion/react";
+import * as React from "react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import { PromptTextarea } from "./prompt-textarea";
+
+interface ChatInputProps {
+	onSend: (message: string) => void;
+	disabled?: boolean;
+	placeholder?: string;
+	className?: string;
+}
+
+export function ChatInput({
+	onSend,
+	disabled = false,
+	placeholder = "Type a message...",
+	className,
+}: ChatInputProps) {
+	const [value, setValue] = React.useState("");
+	const textareaRef = React.useRef<HTMLTextAreaElement>(null);
+
+	const handleSubmit = () => {
+		if (value.trim() && !disabled) {
+			onSend(value.trim());
+			setValue("");
+			textareaRef.current?.focus();
+		}
+	};
+
+	const showButton = value.trim().length > 0;
+
+	return (
+		<div className={cn("flex items-end gap-3", className)}>
+			<motion.div
+				layout
+				transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+				className={cn(
+					"flex-1 flex items-end p-3 rounded-2xl",
+					"bg-white backdrop-blur-xl",
+					"border border-white/20 dark:border-white/10",
+					"ring-1 ring-black/5 dark:ring-white/5",
+				)}
+			>
+				<PromptTextarea
+					ref={textareaRef}
+					value={value}
+					onChange={(e) => setValue(e.target.value)}
+					onSubmit={handleSubmit}
+					placeholder={placeholder}
+					disabled={disabled}
+					className="min-h-[24px] max-h-[200px] py-1 px-1"
+				/>
+			</motion.div>
+			<AnimatePresence mode="popLayout">
+				{showButton && (
+					<motion.div
+						layout
+						initial={{ opacity: 0, scale: 0.5 }}
+						animate={{ opacity: 1, scale: 1 }}
+						exit={{ opacity: 0, scale: 0.5 }}
+						transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+					>
+						<Button
+							type="button"
+							onClick={handleSubmit}
+							disabled={disabled}
+							aria-label="Send message"
+							className="size-[48px] rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white border-none"
+						>
+							<ArrowUp className="size-5" />
+						</Button>
+					</motion.div>
+				)}
+			</AnimatePresence>
+		</div>
+	);
+}
