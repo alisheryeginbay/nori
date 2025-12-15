@@ -66,16 +66,18 @@ export function ChatInput({
 					"ring-1 ring-black/5 dark:ring-white/5",
 				)}
 			>
-				<PromptTextarea
-					ref={textareaRef}
-					value={value}
-					onChange={(e) => setValue(e.target.value)}
-					onSubmit={handleSubmit}
-					placeholder={placeholder}
-					disabled={disabled}
-					autoFocus
-					className="min-h-[24px] max-h-[200px] py-1 px-1"
-				/>
+				<motion.div layout="position" className="w-full flex">
+					<PromptTextarea
+						ref={textareaRef}
+						value={value}
+						onChange={(e) => setValue(e.target.value)}
+						onSubmit={handleSubmit}
+						placeholder={placeholder}
+						disabled={disabled}
+						autoFocus
+						className="min-h-[24px] max-h-[200px] py-1 px-1"
+					/>
+				</motion.div>
 			</motion.div>
 			<AnimatePresence mode="popLayout">
 				{showButton && (
