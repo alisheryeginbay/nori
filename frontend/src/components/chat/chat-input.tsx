@@ -19,13 +19,17 @@ export function ChatInput({
 	className,
 }: ChatInputProps) {
 	const [value, setValue] = React.useState("");
+	const [isSending, setIsSending] = React.useState(false);
 	const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
 	const handleSubmit = () => {
 		if (value.trim() && !disabled) {
+			setIsSending(true);
 			onSend(value.trim());
 			setValue("");
 			textareaRef.current?.focus();
+			// Reset after a short delay
+			setTimeout(() => setIsSending(false), 100);
 		}
 	};
 
@@ -51,13 +55,15 @@ export function ChatInput({
 		return () => document.removeEventListener("keydown", handleKeyDown);
 	}, []);
 
-	const showButton = value.trim().length > 0;
+	const showButton = value.trim().length > 0 && !isSending;
+
+	const springTransition = { type: "spring", stiffness: 500, damping: 30 } as const;
 
 	return (
-		<div className={cn("flex items-end gap-3", className)}>
+		<motion.div layout layoutRoot className={cn("flex items-end gap-3", className)}>
 			<motion.div
 				layout
-				transition={{ type: "spring", stiffness: 500, damping: 30 }}
+				transition={springTransition}
 				onClick={() => textareaRef.current?.focus()}
 				className={cn(
 					"flex-1 flex items-end p-3 rounded-2xl cursor-text",
@@ -66,7 +72,7 @@ export function ChatInput({
 					"ring-1 ring-black/5 dark:ring-white/5",
 				)}
 			>
-				<motion.div layout="position" className="w-full flex">
+				<motion.div layout="position" className="flex-1 flex">
 					<PromptTextarea
 						ref={textareaRef}
 						value={value}
@@ -81,25 +87,22 @@ export function ChatInput({
 			</motion.div>
 			<AnimatePresence mode="popLayout">
 				{showButton && (
-					<motion.div
+					<motion.button
 						layout
+						type="button"
+						onClick={handleSubmit}
+						disabled={disabled}
+						aria-label="Send message"
 						initial={{ opacity: 0, scale: 0.5 }}
 						animate={{ opacity: 1, scale: 1 }}
 						exit={{ opacity: 0, scale: 0.5 }}
-						transition={{ type: "spring", stiffness: 500, damping: 30 }}
+						transition={springTransition}
+						className="size-[48px] rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white border-none flex items-center justify-center disabled:opacity-50"
 					>
-						<Button
-							type="button"
-							onClick={handleSubmit}
-							disabled={disabled}
-							aria-label="Send message"
-							className="size-[48px] rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white border-none"
-						>
-							<ArrowUp className="size-5" />
-						</Button>
-					</motion.div>
+						<ArrowUp className="size-5" />
+					</motion.button>
 				)}
 			</AnimatePresence>
-		</div>
+		</motion.div>
 	);
 }

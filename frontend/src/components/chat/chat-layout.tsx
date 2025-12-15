@@ -6,8 +6,10 @@ import { SignInButton } from "@clerk/nextjs"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { ChatMessage, type Message } from "./chat-message"
 import { ChatInput } from "./chat-input"
+import { RepoList } from "./repo-list"
 import { Button } from "@/components/ui/button"
 import { LogInIcon } from "lucide-react"
+import { cn } from "@/lib/utils"
 
 interface ChatLayoutProps {
   user: SerializedUser | null
@@ -76,63 +78,49 @@ export function ChatLayout({ user }: ChatLayoutProps) {
       </header>
 
       <div className="flex-1 flex flex-col min-h-0">
-        <AnimatePresence>
-          {!hasMessages && (
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
-              className="absolute inset-0 flex items-center justify-center pointer-events-none"
-              style={{ paddingBottom: "100px" }}
-            >
-              <h1 className="text-2xl font-semibold flex">
-                {"What can I help you with?".split("").map((char, index) => (
-                  <motion.span
-                    key={index}
-                    initial={{
-                      opacity: 0,
-                      scale: 0.75,
-                      filter: "blur(10px)",
-                      y: 20
-                    }}
-                    animate={{
-                      opacity: 1,
-                      scale: 1,
-                      filter: "blur(0px)",
-                      y: 0
-                    }}
-                    transition={{
-                      duration: 0.5,
-                      delay: index * 0.05,
-                      ease: [0.215, 0.61, 0.355, 1]
-                    }}
-                    className={char === " " ? "w-[0.3em]" : ""}
-                  >
-                    {char === " " ? "\u00A0" : char}
-                  </motion.span>
-                ))}
-              </h1>
-            </motion.div>
-          )}
-        </AnimatePresence>
+        {/* Welcome section - only on home */}
+        {!hasMessages && (
+          <div className="flex-1 flex items-end justify-center pb-4">
+            <h1 className="text-2xl font-semibold flex">
+              {"What can I help you with?".split("").map((char, index) => (
+                <motion.span
+                  key={index}
+                  initial={{
+                    opacity: 0,
+                    scale: 0.75,
+                    filter: "blur(10px)",
+                    y: 20
+                  }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    filter: "blur(0px)",
+                    y: 0
+                  }}
+                  transition={{
+                    duration: 0.5,
+                    delay: index * 0.05,
+                    ease: [0.215, 0.61, 0.355, 1]
+                  }}
+                  className={char === " " ? "w-[0.3em]" : ""}
+                >
+                  {char === " " ? "\u00A0" : char}
+                </motion.span>
+              ))}
+            </h1>
+          </div>
+        )}
 
-        {!hasMessages && <div className="flex-1" />}
-
+        {/* Messages area */}
         {hasMessages && (
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ duration: 0.4, delay: 0.5 }}
-            className="flex-1 overflow-y-auto"
-          >
+          <div className="flex-1 overflow-y-auto">
             <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-4">
               {messages.map((message, index) => (
                 <motion.div
                   key={message.id}
-                  initial={{ opacity: 0, y: index === 0 ? 0 : 10 }}
+                  initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: index === 0 ? 0 : 0.1 }}
+                  transition={{ duration: 0.3 }}
                 >
                   <ChatMessage message={message} />
                 </motion.div>
@@ -154,23 +142,16 @@ export function ChatLayout({ user }: ChatLayoutProps) {
               )}
               <div ref={messagesEndRef} />
             </div>
-          </motion.div>
+          </div>
         )}
 
-        <motion.div
-          layout
-          transition={{
-            layout: { duration: 0.7, ease: [0.32, 0.72, 0, 1] }
-          }}
-          className="shrink-0 w-full max-w-[1000px] mx-auto px-4 py-4"
-        >
-          <motion.div layout="position">
-            <ChatInput
-              onSend={handleSend}
-              disabled={isLoading}
-              placeholder="Ask anything..."
-            />
-          </motion.div>
+        {/* Input area - always at natural position */}
+        <div className="shrink-0 w-full max-w-[1000px] mx-auto px-4 py-4">
+          <ChatInput
+            onSend={handleSend}
+            disabled={isLoading}
+            placeholder="Ask anything..."
+          />
           <AnimatePresence>
             {showSignInPrompt && !user && (
               <motion.div
@@ -191,9 +172,25 @@ export function ChatLayout({ user }: ChatLayoutProps) {
               </motion.div>
             )}
           </AnimatePresence>
-        </motion.div>
+        </div>
 
-        {!hasMessages && <div className="flex-1" />}
+        {/* Repo list */}
+        {user && !hasMessages && (
+          <motion.div
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="shrink-0 w-full max-w-[1000px] mx-auto px-4"
+          >
+            <RepoList />
+          </motion.div>
+        )}
+
+        {/* Bottom spacer - grows on home */}
+        <motion.div
+          initial={false}
+          animate={{ flexGrow: hasMessages ? 0 : 1 }}
+          transition={{ type: "spring", stiffness: 200, damping: 25 }}
+        />
       </div>
     </div>
   )
