@@ -16,9 +16,20 @@ interface ChatLayoutProps {
   repos: GitHubRepo[]
 }
 
+const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || "http://localhost:8000"
+
+function parseGitHubUrl(text: string): { owner: string; repo: string } | null {
+  const match = text.match(/github\.com\/([^\/\s]+)\/([^\/\s#?]+)/i)
+  if (match) {
+    return { owner: match[1], repo: match[2].replace(/\.git$/, "") }
+  }
+  return null
+}
+
 export function ChatLayout({ user, repos }: ChatLayoutProps) {
   const [messages, setMessages] = React.useState<Message[]>([])
   const [isLoading, setIsLoading] = React.useState(false)
+  const [selectedRepo, setSelectedRepo] = React.useState<GitHubRepo | null>(null)
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
   const { signIn, isLoaded } = useSignIn()
 
@@ -47,6 +58,16 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
       return
     }
 
+    // Parse GitHub URL from message, or use selected repo
+    const parsedRepo = parseGitHubUrl(content)
+    const [selectedOwner, selectedRepoName] = selectedRepo?.full_name.split("/") ?? []
+    const repoOwner = parsedRepo?.owner ?? selectedOwner
+    const repoName = parsedRepo?.repo ?? selectedRepoName
+
+    if (!repoOwner || !repoName) {
+      return
+    }
+
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
@@ -56,15 +77,80 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
     setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
 
-    setTimeout(() => {
-      const assistantMessage: Message = {
-        id: (Date.now() + 1).toString(),
-        role: "assistant",
-        content: "This is a placeholder response. Connect to your AI backend to get real responses.",
+    const assistantId = (Date.now() + 1).toString()
+    let assistantMessageAdded = false
+
+    try {
+      const response = await fetch(
+        `${BACKEND_URL}/github/${repoOwner}/${repoName}`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ query: content }),
+        }
+      )
+
+      if (!response.ok || !response.body) {
+        throw new Error("Failed to connect to backend")
       }
-      setMessages((prev) => [...prev, assistantMessage])
+
+      const reader = response.body.getReader()
+      const decoder = new TextDecoder()
+      let buffer = ""
+      let currentEventType = ""
+      let currentData: string[] = []
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split("\n")
+        buffer = lines.pop() || ""
+
+        for (let line of lines) {
+          // Handle potential carriage returns
+          line = line.replace(/\r$/, "")
+
+          if (line === "") {
+            // Empty line = end of SSE event, process accumulated data
+            if (currentEventType === "text" && currentData.length > 0) {
+              const text = currentData.join("\n")
+              if (!assistantMessageAdded) {
+                // Add assistant message on first text received
+                setMessages((prev) => [...prev, { id: assistantId, role: "assistant" as const, content: text }])
+                assistantMessageAdded = true
+              } else {
+                setMessages((prev) =>
+                  prev.map((msg) =>
+                    msg.id === assistantId
+                      ? { ...msg, content: msg.content + text }
+                      : msg
+                  )
+                )
+              }
+            }
+            currentEventType = ""
+            currentData = []
+          } else if (line.startsWith("event:")) {
+            currentEventType = line.slice(6).trim()
+          } else if (line.startsWith("data:")) {
+            // sse-starlette format is "data: <content>" - slice(6) skips "data: "
+            currentData.push(line.slice(6))
+          }
+        }
+      }
+    } catch (error) {
+      setMessages((prev) =>
+        prev.map((msg) =>
+          msg.id === assistantId
+            ? { ...msg, content: "Sorry, something went wrong. Please try again." }
+            : msg
+        )
+      )
+    } finally {
       setIsLoading(false)
-    }, 1000)
+    }
   }
 
   return (
@@ -164,14 +250,18 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
           <ChatInput
             onSend={handleSend}
             disabled={isLoading}
-            placeholder="Ask anything..."
+            placeholder={selectedRepo ? `Ask about ${selectedRepo.name}...` : "Paste a GitHub URL or select a repo..."}
           />
         </div>
 
         {/* Repo list */}
         {repos.length > 0 && !hasMessages && (
           <div className="shrink-0 w-full max-w-[1000px] mx-auto px-4">
-            <RepoList repos={repos} />
+            <RepoList
+              repos={repos}
+              selectedRepo={selectedRepo?.full_name}
+              onSelect={setSelectedRepo}
+            />
           </div>
         )}
 

@@ -4,25 +4,29 @@ import type { GitHubRepo } from "@/app/api/github/repos/route";
 
 interface RepoListProps {
   repos: GitHubRepo[];
+  selectedRepo?: string;
+  onSelect?: (repo: GitHubRepo) => void;
   className?: string;
 }
 
-export function RepoList({ repos, className }: RepoListProps) {
+export function RepoList({ repos, selectedRepo, onSelect, className }: RepoListProps) {
   return (
     <div className={cn("grid grid-cols-4 gap-2", className)}>
-      {repos.slice(0, 8).map((repo) => (
-        <a
-          key={repo.id}
-          href={repo.html_url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className={cn(
-            "flex flex-col gap-1.5 p-3 rounded-xl",
-            "bg-card border border-border",
-            "hover:border-foreground/20 hover:bg-accent/50",
-            "transition-colors duration-200"
-          )}
-        >
+      {repos.slice(0, 8).map((repo) => {
+        const isSelected = selectedRepo === repo.full_name;
+        return (
+          <button
+            key={repo.id}
+            type="button"
+            onClick={() => onSelect?.(repo)}
+            className={cn(
+              "flex flex-col gap-1.5 p-3 rounded-xl text-left",
+              "bg-card border border-border",
+              "hover:border-foreground/20 hover:bg-accent/50",
+              "transition-colors duration-200",
+              isSelected && "ring-2 ring-primary border-primary"
+            )}
+          >
           <div className="flex items-center gap-2">
             {repo.private ? (
               <Lock className="size-3.5 text-muted-foreground shrink-0" />
@@ -57,8 +61,9 @@ export function RepoList({ repos, className }: RepoListProps) {
               </div>
             )}
           </div>
-        </a>
-      ))}
+          </button>
+        );
+      })}
     </div>
   );
 }
