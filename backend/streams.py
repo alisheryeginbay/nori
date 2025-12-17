@@ -2,7 +2,7 @@ import json
 from typing import AsyncIterator
 import anthropic
 import chromadb
-from sentence_transformers import SentenceTransformer
+from embedding_service import embed_query
 
 
 class Sse:
@@ -32,12 +32,11 @@ class Sse:
 async def stream_repo_query(
     repos: chromadb.Collection,
     client: anthropic.AsyncAnthropic,
-    model: SentenceTransformer,
     repo_id: str,
     query: str,
 ) -> AsyncIterator[str]:
     results = repos.query(
-        query_embeddings=[model.encode(query).tolist()],
+        query_embeddings=[embed_query(query)],
         n_results=5,
         where={"repo": repo_id},
     )

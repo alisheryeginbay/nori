@@ -1,5 +1,3 @@
-from contextlib import asynccontextmanager
-from functools import lru_cache
 from typing import Annotated
 
 import anthropic
@@ -13,19 +11,13 @@ from chroma_service import (
     get_chroma_client,
     get_repos_collection,
 )
+from embedding_service import embed_texts
 from fastapi import Depends, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
-from sentence_transformers import SentenceTransformer
 
 
-@asynccontextmanager
-async def lifespan(app: FastAPI):
-    get_model()  # Pre-load embedding model at startup
-    yield
-
-
-app = FastAPI(title="Nori API", lifespan=lifespan)
+app = FastAPI(title="Nori API")
 
 app.add_middleware(
     CORSMiddleware,
@@ -40,13 +32,7 @@ app.add_middleware(
 )
 
 
-@lru_cache
-def get_model() -> SentenceTransformer:
-    return SentenceTransformer("nomic-ai/nomic-embed-text-v1.5", trust_remote_code=True)
-
-
 ChromaClientDep = Annotated[chromadb.HttpClient, Depends(get_chroma_client)]
-ModelDep = Annotated[SentenceTransformer, Depends(get_model)]
 ReposDep = Annotated[chromadb.Collection, Depends(get_repos_collection)]
 AnthropicDep = Annotated[anthropic.AsyncAnthropic, Depends(get_anthropic_client)]
 
@@ -66,10 +52,10 @@ async def health(client: ChromaClientDep):
 
 
 @app.post("/add")
-async def test(text: str, model: ModelDep, repos: ReposDep):
+async def test(text: str, repos: ReposDep):
     repos.add(
         ids=[str(hash(text))],
-        embeddings=[model.encode(text).tolist()],
+        embeddings=embed_texts([text]),
         documents=[text],
     )
 
@@ -83,15 +69,18 @@ async def github(
     owner: str,
     repo: str,
     body: ChatRequest,
-    model: ModelDep,
     repos: ReposDep,
     anthropic: AnthropicDep,
 ):
     chunks = await index_repo(f"https://github.com/{owner}/{repo}.git")
-    for chunk in chunks:
+
+    # Batch embed all chunks at once
+    embeddings = embed_texts([chunk["content"] for chunk in chunks])
+
+    for chunk, embedding in zip(chunks, embeddings):
         repos.add(
             ids=[f"{owner}::{repo}::{chunk['file']}::{chunk['name']}"],
-            embeddings=[model.encode(chunk["content"]).tolist()],
+            embeddings=[embedding],
             documents=[chunk["content"]],
             metadatas=[
                 {
@@ -105,7 +94,7 @@ async def github(
 
     return EventSourceResponse(
         stream_repo_query(
-            repos, anthropic, model, repo_id=f"{owner}/{repo}", query=body.query
+            repos, anthropic, repo_id=f"{owner}/{repo}", query=body.query
         ),
         media_type="text/event-stream",
     )

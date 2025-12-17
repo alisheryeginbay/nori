@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     frontend_url: str = "http://127.0.0.1:3000"
     anthropic_api_key: str
+    voyage_api_key: str
 
     # Chroma local (dev)
     chroma_host: str = "chromadb"
