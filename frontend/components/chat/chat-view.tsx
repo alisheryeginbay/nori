@@ -154,6 +154,46 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
       </header>
 
       <div className="flex-1 min-h-0 relative">
+        {/* Welcome message */}
+        {messages.length === 0 && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center px-8 pointer-events-none">
+            <h1 className="text-2xl font-semibold flex mb-2">
+              {[chat.repo_id.split("/")[0], "/", chat.repo_id.split("/")[1], "\u00A0", "is", "\u00A0", "ready"].map((part, index) => (
+                <motion.span
+                  key={index}
+                  initial={{
+                    opacity: 0,
+                    scale: 0.75,
+                    filter: "blur(10px)",
+                    y: 20,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    filter: "blur(0px)",
+                    y: 0,
+                  }}
+                  transition={{
+                    duration: 0.5,
+                    delay: index * 0.1,
+                    ease: [0.215, 0.61, 0.355, 1],
+                  }}
+                >
+                  {part}
+                </motion.span>
+              ))}
+            </h1>
+            <motion.p
+              className="text-sm text-muted-foreground"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ delay: 0.8, duration: 0.5 }}
+            >
+              Ask anything about this repository
+            </motion.p>
+          </div>
+        )}
+
         {/* Messages area */}
         <div className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
           <div className="px-8 py-6 pb-24 space-y-4">
