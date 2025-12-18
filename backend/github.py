@@ -16,6 +16,7 @@ async def index_repo(repo_url: str):
         clone_repo(repo_url, dest)
         for file in dest.rglob("*.py"):
             content = file.read_text()
-            chunks = chunk_python_file(content, str(file))
+            relative_path = str(file.relative_to(dest))
+            chunks = chunk_python_file(content, relative_path)
             all_chunks.extend(chunks)
     return all_chunks
