@@ -70,6 +70,9 @@ async def test(text: str, repos: ReposDep):
 # --- Repos Endpoints ---
 
 
+MAX_REPO_SIZE_MB = 50  # Temporary limit
+
+
 async def index_repo_stream(
     owner: str,
     repo: str,
@@ -77,6 +80,7 @@ async def index_repo_stream(
 ) -> AsyncIterator[dict]:
     """Stream repo indexing progress as SSE events."""
     import json
+    import httpx
     import voyageai
 
     repo_id = f"{owner}/{repo}"
@@ -91,6 +95,27 @@ async def index_repo_stream(
             "cached": True,
         })}
         return
+
+    # Check repo size before cloning
+    try:
+        async with httpx.AsyncClient() as client:
+            response = await client.get(f"https://api.github.com/repos/{owner}/{repo}")
+            if response.status_code == 200:
+                repo_data = response.json()
+                size_kb = repo_data.get("size", 0)
+                size_mb = size_kb / 1024
+                if size_mb > MAX_REPO_SIZE_MB:
+                    yield {"event": "error", "data": json.dumps({
+                        "message": f"Repository is too large ({size_mb:.0f}MB). Maximum allowed size is {MAX_REPO_SIZE_MB}MB."
+                    })}
+                    return
+            elif response.status_code == 404:
+                yield {"event": "error", "data": json.dumps({
+                    "message": "Repository not found. Please check the URL and make sure it's a public repository."
+                })}
+                return
+    except Exception:
+        pass  # Continue anyway if we can't check size
 
     # Create or get repo record
     await db.create_repo(repo_id)
