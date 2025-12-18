@@ -1,7 +1,7 @@
 "use client"
 
 import { useClerk } from "@clerk/nextjs"
-import { UserIcon, LogOutIcon } from "lucide-react"
+import { UserIcon, LogOutIcon, SettingsIcon } from "lucide-react"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,9 +23,10 @@ export interface SerializedUser {
 
 interface UserMenuProps {
   user: SerializedUser
+  onOpenSettings?: () => void
 }
 
-export function UserMenu({ user }: UserMenuProps) {
+export function UserMenu({ user, onOpenSettings }: UserMenuProps) {
   const { signOut, openUserProfile } = useClerk()
 
   const initials = user.firstName && user.lastName
@@ -77,6 +78,10 @@ export function UserMenu({ user }: UserMenuProps) {
         <DropdownMenuItem onClick={() => openUserProfile()}>
           <UserIcon />
           My Profile
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={onOpenSettings}>
+          <SettingsIcon />
+          API Settings
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem variant="destructive" onClick={() => signOut()}>

@@ -39,5 +39,6 @@
   },
   "[python]": {
     "editor.defaultFormatter": "charliermarsh.ruff"
-  }
+  },
+  "python.languageServer": "None"
 }

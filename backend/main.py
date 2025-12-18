@@ -1,23 +1,31 @@
-from typing import Annotated
+from contextlib import asynccontextmanager
+from typing import Annotated, AsyncIterator
+from uuid import UUID
 
-import anthropic
 import chromadb
 from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel
-from streams import stream_repo_query
+from streams import stream_chat_response
 from github import index_repo
-from anthropic_service import get_anthropic_client
 from chroma_service import (
     get_chroma_client,
     get_repos_collection,
 )
 from embedding_service import embed_texts
-from fastapi import Depends, FastAPI
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
+import db
 
 
-app = FastAPI(title="Nori API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await db.init_db()
+    yield
+    await db.close_pool()
+
+
+app = FastAPI(title="Nori API", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
@@ -34,7 +42,6 @@ app.add_middleware(
 
 ChromaClientDep = Annotated[chromadb.HttpClient, Depends(get_chroma_client)]
 ReposDep = Annotated[chromadb.Collection, Depends(get_repos_collection)]
-AnthropicDep = Annotated[anthropic.AsyncAnthropic, Depends(get_anthropic_client)]
 
 
 @app.get("/")
@@ -60,41 +67,286 @@ async def test(text: str, repos: ReposDep):
     )
 
 
-class ChatRequest(BaseModel):
-    query: str
+# --- Repos Endpoints ---
 
 
-@app.post("/github/{owner}/{repo}")
-async def github(
+async def index_repo_stream(
     owner: str,
     repo: str,
-    body: ChatRequest,
-    repos: ReposDep,
-    anthropic: AnthropicDep,
-):
-    chunks = await index_repo(f"https://github.com/{owner}/{repo}.git")
+    collection: chromadb.Collection,
+) -> AsyncIterator[dict]:
+    """Stream repo indexing progress as SSE events."""
+    import json
+    import voyageai
 
-    # Batch embed all chunks at once
-    embeddings = embed_texts([chunk["content"] for chunk in chunks])
+    repo_id = f"{owner}/{repo}"
 
-    for chunk, embedding in zip(chunks, embeddings):
-        repos.add(
-            ids=[f"{owner}::{repo}::{chunk['file']}::{chunk['name']}"],
-            embeddings=[embedding],
-            documents=[chunk["content"]],
-            metadatas=[
-                {
-                    "repo": f"{owner}/{repo}",
+    # Check if already indexed
+    existing = await db.get_repo(repo_id)
+    if existing and existing["status"] == "ready":
+        yield {"event": "done", "data": json.dumps({
+            "status": "ready",
+            "chunks_count": existing["chunks_count"],
+            "indexed_at": existing["indexed_at"].isoformat() if existing["indexed_at"] else None,
+            "cached": True,
+        })}
+        return
+
+    # Create or get repo record
+    await db.create_repo(repo_id)
+    await db.update_repo_status(repo_id, "indexing")
+
+    yield {"event": "status", "data": json.dumps({"stage": "cloning", "progress": 0})}
+
+    try:
+        # Clone and parse
+        chunks = await index_repo(f"https://github.com/{owner}/{repo}.git")
+
+        yield {"event": "status", "data": json.dumps({
+            "stage": "parsing",
+            "progress": 30,
+            "files_found": len(set(c["file"] for c in chunks)),
+        })}
+
+        if not chunks:
+            await db.update_repo_status(repo_id, "error", error="No code found in repo")
+            yield {"event": "error", "data": json.dumps({"message": "No code found in repo"})}
+            return
+
+        yield {"event": "status", "data": json.dumps({
+            "stage": "embedding",
+            "progress": 50,
+            "chunks": len(chunks),
+        })}
+
+        voyage_client = voyageai.Client(api_key=settings.voyage_api_key)
+
+        # Batch embed
+        embeddings = voyage_client.embed(
+            [chunk["content"] for chunk in chunks],
+            model="voyage-code-3",
+            input_type="document",
+        ).embeddings
+
+        yield {"event": "status", "data": json.dumps({
+            "stage": "storing",
+            "progress": 80,
+        })}
+
+        # Store in ChromaDB
+        for chunk, embedding in zip(chunks, embeddings):
+            collection.add(
+                ids=[f"{owner}::{repo}::{chunk['file']}::{chunk['name']}"],
+                embeddings=[embedding],
+                documents=[chunk["content"]],
+                metadatas=[{
+                    "repo": repo_id,
                     "file": chunk["file"],
                     "type": chunk["type"],
                     "name": chunk["name"],
-                }
-            ],
+                }],
+            )
+
+        # Update repo status
+        await db.update_repo_status(repo_id, "ready", chunks_count=len(chunks))
+
+        yield {"event": "done", "data": json.dumps({
+            "status": "ready",
+            "chunks_count": len(chunks),
+            "cached": False,
+        })}
+
+    except Exception as e:
+        await db.update_repo_status(repo_id, "error", error=str(e))
+        yield {"event": "error", "data": json.dumps({"message": str(e)})}
+
+
+class IndexRepoRequest(BaseModel):
+    user_id: str
+
+
+@app.post("/repos/{owner}/{repo}/index")
+async def index_repo_endpoint(
+    owner: str,
+    repo: str,
+    body: IndexRepoRequest,
+    collection: ReposDep,
+):
+    return EventSourceResponse(
+        index_repo_stream(owner, repo, collection),
+        media_type="text/event-stream",
+    )
+
+
+@app.get("/repos/{owner}/{repo}")
+async def get_repo_status(owner: str, repo: str):
+    repo_id = f"{owner}/{repo}"
+    repo_data = await db.get_repo(repo_id)
+    if not repo_data:
+        raise HTTPException(status_code=404, detail="Repo not found")
+    return repo_data
+
+
+# --- Chat Endpoints ---
+
+
+class CreateChatRequest(BaseModel):
+    repo_id: str  # "owner/repo"
+    user_id: str  # from Clerk
+
+
+class SendMessageRequest(BaseModel):
+    content: str
+    user_id: str  # from Clerk
+
+
+@app.post("/chats")
+async def create_chat(body: CreateChatRequest):
+    # Check if repo is indexed
+    repo = await db.get_repo(body.repo_id)
+    if not repo or repo["status"] != "ready":
+        raise HTTPException(status_code=400, detail="Repo not indexed")
+
+    chat = await db.create_chat(user_id=body.user_id, repo_id=body.repo_id)
+    return chat
+
+
+@app.get("/chats")
+async def list_chats(user_id: str):
+    chats = await db.get_user_chats(user_id)
+    return chats
+
+
+@app.get("/chats/{chat_id}")
+async def get_chat(chat_id: UUID):
+    chat = await db.get_chat(chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    messages = await db.get_chat_messages(chat_id)
+    return {**chat, "messages": messages}
+
+
+@app.delete("/chats/{chat_id}")
+async def delete_chat(chat_id: UUID):
+    deleted = await db.delete_chat(chat_id)
+    if not deleted:
+        raise HTTPException(status_code=404, detail="Chat not found")
+    return {"deleted": True}
+
+
+@app.post("/chats/{chat_id}/messages")
+async def send_message(
+    chat_id: UUID,
+    body: SendMessageRequest,
+    collection: ReposDep,
+):
+    # Get chat
+    chat = await db.get_chat(chat_id)
+    if not chat:
+        raise HTTPException(status_code=404, detail="Chat not found")
+
+    # Get user's Anthropic key (required)
+    anthropic_key = await db.get_user_api_key(body.user_id, "anthropic")
+    if not anthropic_key:
+        raise HTTPException(
+            status_code=400,
+            detail="Anthropic API key required. Please add your API key in settings.",
         )
 
+    # Save user message
+    await db.create_message(chat_id, role="user", content=body.content)
+
+    # Get all messages for context
+    messages = await db.get_chat_messages(chat_id)
+
     return EventSourceResponse(
-        stream_repo_query(
-            repos, anthropic, repo_id=f"{owner}/{repo}", query=body.query
+        stream_chat_response(
+            collection=collection,
+            repo_id=chat["repo_id"],
+            messages=messages,
+            chat_id=chat_id,
+            anthropic_api_key=anthropic_key,
         ),
         media_type="text/event-stream",
     )
+
+
+# --- User Endpoints ---
+
+
+class UpdateApiKeysRequest(BaseModel):
+    anthropic_api_key: str | None = None
+
+
+@app.get("/users/{user_id}")
+async def get_user(user_id: str):
+    user = await db.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    has_anthropic_key = await db.get_user_api_key(user_id, "anthropic") is not None
+    return {
+        **user,
+        "has_anthropic_key": has_anthropic_key,
+    }
+
+
+@app.put("/users/{user_id}/api-keys")
+async def update_api_keys(user_id: str, body: UpdateApiKeysRequest):
+    user = await db.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    if body.anthropic_api_key is not None:
+        if body.anthropic_api_key:
+            await db.set_user_api_key(user_id, "anthropic", body.anthropic_api_key)
+        else:
+            await db.delete_user_api_key(user_id, "anthropic")
+
+    has_anthropic_key = await db.get_user_api_key(user_id, "anthropic") is not None
+    return {"has_anthropic_key": has_anthropic_key}
+
+
+# --- Clerk Webhook ---
+
+
+@app.post("/webhooks/clerk")
+async def clerk_webhook(request: Request):
+    from svix.webhooks import Webhook, WebhookVerificationError
+
+    if not settings.clerk_webhook_secret:
+        # Skip verification in dev if no secret configured
+        payload = await request.json()
+    else:
+        # Verify webhook signature
+        headers = dict(request.headers)
+        payload_bytes = await request.body()
+
+        try:
+            wh = Webhook(settings.clerk_webhook_secret)
+            payload = wh.verify(payload_bytes, headers)
+        except WebhookVerificationError:
+            raise HTTPException(status_code=400, detail="Invalid webhook signature")
+
+    event_type = payload.get("type")
+    data = payload.get("data", {})
+
+    if event_type == "user.created":
+        await db.create_user(
+            user_id=data["id"],
+            email=data.get("email_addresses", [{}])[0].get("email_address"),
+            name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or None,
+            avatar_url=data.get("image_url"),
+        )
+    elif event_type == "user.updated":
+        await db.create_user(  # Upsert
+            user_id=data["id"],
+            email=data.get("email_addresses", [{}])[0].get("email_address"),
+            name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or None,
+            avatar_url=data.get("image_url"),
+        )
+    elif event_type == "user.deleted":
+        await db.delete_user(data["id"])
+
+    return {"received": True}

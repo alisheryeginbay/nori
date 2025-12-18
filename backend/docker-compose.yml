@@ -14,11 +14,12 @@ services:
       - /app/.venv
     depends_on:
       - chromadb
+      - postgres
     environment:
       - CHROMA_HOST=chromadb
       - CHROMA_PORT=8000
+      - DATABASE_URL=postgresql://nori:nori@postgres:5432/nori
       - PYTHONUNBUFFERED=1
-
 
   chromadb:
     image: chromadb/chroma:latest
@@ -27,5 +28,17 @@ services:
     volumes:
       - chroma_data:/chroma/chroma
 
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_USER=nori
+      - POSTGRES_PASSWORD=nori
+      - POSTGRES_DB=nori
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
 volumes:
   chroma_data:
+  postgres_data:
