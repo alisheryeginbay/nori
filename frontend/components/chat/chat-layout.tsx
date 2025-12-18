@@ -142,7 +142,7 @@ export function ChatLayout({ user }: ChatLayoutProps) {
 
       <div className="flex-1 flex flex-col items-center justify-center px-8">
         <h1 className="text-2xl font-semibold flex mb-6">
-          {"What can I help you with?".split("").map((char, index) => (
+          {"Which codebase shall we explore?".split("").map((char, index) => (
             <motion.span
               key={index}
               initial={{
