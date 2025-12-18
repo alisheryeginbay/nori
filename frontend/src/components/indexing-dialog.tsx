@@ -65,7 +65,7 @@ export function IndexingDialog({
           ) : (
             stages.map((stage, index) => {
               const Icon = stage.icon
-              const isActive = index === currentStageIndex
+              const isActive = index === currentStageIndex && !isComplete
               const isCompleted = index < currentStageIndex || isComplete
               const isPending = index > currentStageIndex && !isComplete
 

@@ -122,6 +122,7 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
 
         if (result.status === "ready") {
           setIndexComplete(true)
+          setIndexingOpen(false)
           // Create chat after successful indexing
           const chat = await createChat(user.id, repo.full_name)
           setCurrentChat(chat)
@@ -179,6 +180,7 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
             setIndexProgress(progress)
           })
           setIndexComplete(true)
+          setIndexingOpen(false)
           const chat = await createChat(user.id, fullName)
           setCurrentChat(chat)
         } catch (err) {
