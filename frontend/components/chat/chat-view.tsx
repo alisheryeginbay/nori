@@ -2,13 +2,10 @@
 
 import * as React from "react"
 import { motion } from "motion/react"
-import { useSignIn } from "@clerk/nextjs"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { ChatMessage, type Message } from "./chat-message"
 import { ChatInput } from "./chat-input"
-import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/settings-dialog"
-import { GithubIcon } from "lucide-react"
 import type { GitHubRepo } from "@/app/api/github/repos/route"
 import {
   getUser,
@@ -35,10 +32,9 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
   const [settingsOpen, setSettingsOpen] = React.useState(false)
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
-  const { signIn, isLoaded } = useSignIn()
 
-  // Get repo name from chat.repo_id (format: owner/repo)
-  const repoName = chat.repo_id.split("/")[1] || chat.repo_id
+  // Get repo info from chat.repo_id (format: owner/repo)
+  const [owner, repoName] = chat.repo_id.split("/")
 
   // Fetch user's API key status on mount
   React.useEffect(() => {
@@ -54,15 +50,6 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
   React.useEffect(() => {
     scrollToBottom()
   }, [messages])
-
-  const signInWithGitHub = async () => {
-    if (!isLoaded || !signIn) return
-    await signIn.authenticateWithRedirect({
-      strategy: "oauth_github",
-      redirectUrl: "/sso-callback",
-      redirectUrlComplete: "/",
-    })
-  }
 
   const handleSend = async (content: string) => {
     // Check if user has API key
@@ -158,7 +145,7 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
         {messages.length === 0 && (
           <div className="absolute inset-0 flex flex-col items-center justify-center px-8 pointer-events-none">
             <h1 className="text-2xl font-semibold flex mb-2">
-              {[chat.repo_id.split("/")[0], "/", chat.repo_id.split("/")[1], "\u00A0", "is", "\u00A0", "ready"].map((part, index) => (
+              {[owner, "/", repoName, "\u00A0", "is", "\u00A0", "ready"].map((part, index) => (
                 <motion.span
                   key={index}
                   initial={{

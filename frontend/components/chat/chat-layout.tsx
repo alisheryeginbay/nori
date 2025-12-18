@@ -2,13 +2,13 @@
 
 import * as React from "react"
 import { useRouter } from "next/navigation"
-import { motion } from "motion/react"
+import { motion, AnimatePresence } from "motion/react"
 import { useSignIn } from "@clerk/nextjs"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { ChatInput } from "./chat-input"
+import { IndexingView } from "./indexing-view"
 import { Button } from "@/components/ui/button"
 import { SettingsDialog } from "@/components/settings-dialog"
-import { IndexingDialog } from "@/components/indexing-dialog"
 import { GithubIcon } from "lucide-react"
 import {
   getUser,
@@ -37,11 +37,10 @@ export function ChatLayout({ user }: ChatLayoutProps) {
   const [settingsOpen, setSettingsOpen] = React.useState(false)
 
   // Indexing state
-  const [indexingOpen, setIndexingOpen] = React.useState(false)
+  const [isIndexing, setIsIndexing] = React.useState(false)
   const [indexingRepo, setIndexingRepo] = React.useState<string>("")
   const [indexProgress, setIndexProgress] = React.useState<IndexProgress | null>(null)
   const [indexError, setIndexError] = React.useState<string | null>(null)
-  const [indexComplete, setIndexComplete] = React.useState(false)
 
   const { signIn, isLoaded } = useSignIn()
 
@@ -86,30 +85,27 @@ export function ChatLayout({ user }: ChatLayoutProps) {
     setIsLoading(true)
 
     try {
-      // Check if this repo needs indexing
+      // Check if repo needs indexing
       const status = await getRepoStatus(parsedRepo.owner, parsedRepo.repo)
 
       if (!status || status.status !== "ready") {
-        // Need to index first
+        // Show indexing view and start indexing
+        setIsIndexing(true)
         setIndexingRepo(fullName)
-        setIndexProgress(null)
+        setIndexProgress({ stage: "cloning", progress: 0 })
         setIndexError(null)
-        setIndexComplete(false)
-        setIndexingOpen(true)
 
         await indexRepo(parsedRepo.owner, parsedRepo.repo, user.id, (progress) => {
           setIndexProgress(progress)
         })
-        setIndexComplete(true)
-        setIndexingOpen(false)
       }
 
-      // Create chat and redirect
+      // Create chat and navigate
       const chat = await createChat(user.id, fullName)
       router.push(`/chat/${chat.id}`)
     } catch (err) {
-      setIndexError(err instanceof Error ? err.message : "Failed to index repo")
-    } finally {
+      console.error("Failed:", err)
+      setIndexError(err instanceof Error ? err.message : "Something went wrong")
       setIsLoading(false)
     }
   }
@@ -140,42 +136,67 @@ export function ChatLayout({ user }: ChatLayoutProps) {
         </div>
       </header>
 
-      <div className="flex-1 flex flex-col items-center justify-center px-8">
-        <h1 className="text-2xl font-semibold flex mb-6">
-          {"Which codebase shall we explore?".split("").map((char, index) => (
-            <motion.span
-              key={index}
-              initial={{
-                opacity: 0,
-                scale: 0.75,
-                filter: "blur(10px)",
-                y: 20,
-              }}
-              animate={{
-                opacity: 1,
-                scale: 1,
-                filter: "blur(0px)",
-                y: 0,
-              }}
-              transition={{
-                duration: 0.5,
-                delay: index * 0.05,
-                ease: [0.215, 0.61, 0.355, 1],
-              }}
-              className={char === " " ? "w-[0.3em]" : ""}
-            >
-              {char === " " ? "\u00A0" : char}
-            </motion.span>
-          ))}
-        </h1>
-        <div className="w-full max-w-2xl">
-          <ChatInput
-            onSend={handleSend}
-            disabled={isLoading}
-            placeholder="Paste a GitHub URL..."
-          />
-        </div>
-      </div>
+      <AnimatePresence mode="wait">
+        {isIndexing ? (
+          <motion.div
+            key="indexing"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0, scale: 0.95 }}
+            transition={{ duration: 0.3 }}
+            className="flex-1 flex"
+          >
+            <IndexingView
+              repoName={indexingRepo}
+              progress={indexProgress}
+              error={indexError}
+            />
+          </motion.div>
+        ) : (
+          <motion.div
+            key="home"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="flex-1 flex flex-col items-center justify-center px-8"
+          >
+            <h1 className="text-2xl font-semibold flex mb-6">
+              {"Which codebase shall we explore?".split("").map((char, index) => (
+                <motion.span
+                  key={index}
+                  initial={{
+                    opacity: 0,
+                    scale: 0.75,
+                    filter: "blur(10px)",
+                    y: 20,
+                  }}
+                  animate={{
+                    opacity: 1,
+                    scale: 1,
+                    filter: "blur(0px)",
+                    y: 0,
+                  }}
+                  transition={{
+                    duration: 0.5,
+                    delay: index * 0.05,
+                    ease: [0.215, 0.61, 0.355, 1],
+                  }}
+                  className={char === " " ? "w-[0.3em]" : ""}
+                >
+                  {char === " " ? "\u00A0" : char}
+                </motion.span>
+              ))}
+            </h1>
+            <div className="w-full max-w-2xl">
+              <ChatInput
+                onSend={handleSend}
+                disabled={isLoading}
+                placeholder="Paste a GitHub URL..."
+              />
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
       </div>
 
       {/* Settings Dialog */}
@@ -188,16 +209,6 @@ export function ChatLayout({ user }: ChatLayoutProps) {
           onApiKeyUpdated={setHasApiKey}
         />
       )}
-
-      {/* Indexing Dialog */}
-      <IndexingDialog
-        open={indexingOpen}
-        onOpenChange={setIndexingOpen}
-        repoName={indexingRepo}
-        progress={indexProgress}
-        error={indexError}
-        isComplete={indexComplete}
-      />
     </div>
   )
 }
