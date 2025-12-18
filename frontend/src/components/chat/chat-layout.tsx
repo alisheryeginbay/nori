@@ -285,7 +285,7 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <header className="shrink-0 px-4 py-3">
+      <header className="shrink-0 px-4 py-3 fixed left-0 top-0 right-0 bg-gradient-to-b from-background to-transparent">
         <div className="max-w-[1000px] mx-auto flex items-center justify-between">
           <a href="/" className="text-lg font-semibold hover:opacity-80 transition-opacity">
             Nori
@@ -310,7 +310,7 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
       <div className="flex-1 flex flex-col min-h-0">
         {/* Welcome section */}
         {!hasMessages && (
-          <div className="flex-1 flex items-end justify-center pb-4">
+          <div className="flex-1 flex items-end justify-center pb-4 pt-14">
             <h1 className="text-2xl font-semibold flex">
               {"What can I help you with?".split("").map((char, index) => (
                 <motion.span
@@ -343,7 +343,7 @@ export function ChatLayout({ user, repos }: ChatLayoutProps) {
 
         {/* Messages area */}
         {hasMessages && (
-          <div className="flex-1 overflow-y-auto">
+          <div className="flex-1 overflow-y-auto pt-14">
             <div className="max-w-[1000px] mx-auto px-4 py-6 space-y-4">
               {messages.map((message) => (
                 <motion.div
