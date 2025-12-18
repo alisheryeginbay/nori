@@ -30,8 +30,14 @@ export function ChatInput({
 
 	React.useEffect(() => {
 		const handleKeyDown = (e: KeyboardEvent) => {
+			const activeElement = document.activeElement;
+			const isInputFocused =
+				activeElement instanceof HTMLInputElement ||
+				activeElement instanceof HTMLTextAreaElement ||
+				activeElement?.getAttribute("contenteditable") === "true";
+
 			if (
-				document.activeElement === textareaRef.current ||
+				isInputFocused ||
 				e.metaKey ||
 				e.ctrlKey ||
 				e.altKey ||
