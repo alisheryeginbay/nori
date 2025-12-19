@@ -1,3 +1,5 @@
+import asyncio
+from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Annotated, AsyncIterator
 from uuid import UUID
@@ -64,7 +66,7 @@ async def test(text: str, vectorstore: VectorStoreDep):
 # --- Repos Endpoints ---
 
 
-MAX_REPO_SIZE_MB = 50  # Temporary limit
+MAX_REPO_SIZE_MB = 500  # Temporary limit
 
 
 async def index_repo_stream(
@@ -81,12 +83,19 @@ async def index_repo_stream(
     # Check if already indexed
     existing = await db.get_repo(repo_id)
     if existing and existing["status"] == "ready":
-        yield {"event": "done", "data": json.dumps({
-            "status": "ready",
-            "chunks_count": existing["chunks_count"],
-            "indexed_at": existing["indexed_at"].isoformat() if existing["indexed_at"] else None,
-            "cached": True,
-        })}
+        yield {
+            "event": "done",
+            "data": json.dumps(
+                {
+                    "status": "ready",
+                    "chunks_count": existing["chunks_count"],
+                    "indexed_at": existing["indexed_at"].isoformat()
+                    if existing["indexed_at"]
+                    else None,
+                    "cached": True,
+                }
+            ),
+        }
         return
 
     # Check repo size before cloning
@@ -98,14 +107,24 @@ async def index_repo_stream(
                 size_kb = repo_data.get("size", 0)
                 size_mb = size_kb / 1024
                 if size_mb > MAX_REPO_SIZE_MB:
-                    yield {"event": "error", "data": json.dumps({
-                        "message": f"Repository is too large ({size_mb:.0f}MB). Maximum allowed size is {MAX_REPO_SIZE_MB}MB."
-                    })}
+                    yield {
+                        "event": "error",
+                        "data": json.dumps(
+                            {
+                                "message": f"Repository is too large ({size_mb:.0f}MB). Maximum allowed size is {MAX_REPO_SIZE_MB}MB."
+                            }
+                        ),
+                    }
                     return
             elif response.status_code == 404:
-                yield {"event": "error", "data": json.dumps({
-                    "message": "Repository not found. Please check the URL and make sure it's a public repository."
-                })}
+                yield {
+                    "event": "error",
+                    "data": json.dumps(
+                        {
+                            "message": "Repository not found. Please check the URL and make sure it's a public repository."
+                        }
+                    ),
+                }
                 return
     except Exception:
         pass  # Continue anyway if we can't check size
@@ -120,22 +139,35 @@ async def index_repo_stream(
         # Clone and parse
         chunks = await index_repo(f"https://github.com/{owner}/{repo}.git")
 
-        yield {"event": "status", "data": json.dumps({
-            "stage": "parsing",
-            "progress": 30,
-            "files_found": len(set(c["file"] for c in chunks)),
-        })}
+        yield {
+            "event": "status",
+            "data": json.dumps(
+                {
+                    "stage": "parsing",
+                    "progress": 30,
+                    "files_found": len(set(c["file"] for c in chunks)),
+                }
+            ),
+        }
 
         if not chunks:
             await db.update_repo_status(repo_id, "error", error="No code found in repo")
-            yield {"event": "error", "data": json.dumps({"message": "No code found in repo"})}
+            yield {
+                "event": "error",
+                "data": json.dumps({"message": "No code found in repo"}),
+            }
             return
 
-        yield {"event": "status", "data": json.dumps({
-            "stage": "embedding",
-            "progress": 50,
-            "chunks": len(chunks),
-        })}
+        yield {
+            "event": "status",
+            "data": json.dumps(
+                {
+                    "stage": "embedding",
+                    "progress": 50,
+                    "chunks": len(chunks),
+                }
+            ),
+        }
 
         # Build LangChain documents
         docs = [
@@ -153,22 +185,46 @@ async def index_repo_stream(
             for chunk in chunks
         ]
 
-        yield {"event": "status", "data": json.dumps({
-            "stage": "storing",
-            "progress": 80,
-        })}
+        yield {
+            "event": "status",
+            "data": json.dumps(
+                {
+                    "stage": "storing",
+                    "progress": 80,
+                }
+            ),
+        }
 
-        # Store in vectorstore (embeddings computed automatically)
-        vectorstore.add_documents(docs)
+        # Store in vectorstore in parallel batches for speed
+        BATCH_SIZE = 500
+        MAX_PARALLEL = 5  # Process 5 batches concurrently
+
+        batches = [docs[i : i + BATCH_SIZE] for i in range(0, len(docs), BATCH_SIZE)]
+
+        async def process_batches():
+            loop = asyncio.get_event_loop()
+            with ThreadPoolExecutor(max_workers=MAX_PARALLEL) as executor:
+                tasks = [
+                    loop.run_in_executor(executor, vectorstore.add_documents, batch)
+                    for batch in batches
+                ]
+                await asyncio.gather(*tasks)
+
+        await process_batches()
 
         # Update repo status
         await db.update_repo_status(repo_id, "ready", chunks_count=len(chunks))
 
-        yield {"event": "done", "data": json.dumps({
-            "status": "ready",
-            "chunks_count": len(chunks),
-            "cached": False,
-        })}
+        yield {
+            "event": "done",
+            "data": json.dumps(
+                {
+                    "status": "ready",
+                    "chunks_count": len(chunks),
+                    "cached": False,
+                }
+            ),
+        }
 
     except Exception as e:
         await db.update_repo_status(repo_id, "error", error=str(e))
@@ -350,14 +406,16 @@ async def clerk_webhook(request: Request):
         await db.create_user(
             user_id=data["id"],
             email=data.get("email_addresses", [{}])[0].get("email_address"),
-            name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or None,
+            name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+            or None,
             avatar_url=data.get("image_url"),
         )
     elif event_type == "user.updated":
         await db.create_user(  # Upsert
             user_id=data["id"],
             email=data.get("email_addresses", [{}])[0].get("email_address"),
-            name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip() or None,
+            name=f"{data.get('first_name', '')} {data.get('last_name', '')}".strip()
+            or None,
             avatar_url=data.get("image_url"),
         )
     elif event_type == "user.deleted":

@@ -123,6 +123,9 @@ async def create_user(
 
 async def delete_user(user_id: str) -> bool:
     async with get_connection() as conn:
+        # Delete user's chats first (messages cascade automatically)
+        await conn.execute("DELETE FROM chats WHERE user_id = $1", user_id)
+        # Now delete the user (api_keys cascade automatically)
         result = await conn.execute("DELETE FROM users WHERE id = $1", user_id)
         return result == "DELETE 1"
 
