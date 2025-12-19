@@ -1,8 +1,11 @@
 import json
 from typing import AsyncIterator
 from uuid import UUID
-import anthropic
+
 import chromadb
+from langchain_anthropic import ChatAnthropic
+from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
+
 import db
 
 
@@ -86,22 +89,27 @@ Always reference the specific file(s) when citing code.
 
 {code_context}"""
 
-    # Build conversation history for Claude
-    claude_messages = [{"role": m["role"], "content": m["content"]} for m in messages]
+    # Build conversation history for LangChain
+    langchain_messages = [SystemMessage(content=system_prompt)]
+    for m in messages:
+        if m["role"] == "user":
+            langchain_messages.append(HumanMessage(content=m["content"]))
+        else:
+            langchain_messages.append(AIMessage(content=m["content"]))
 
-    # Create Anthropic client with user's key
-    client = anthropic.AsyncAnthropic(api_key=anthropic_api_key)
+    # Create LangChain ChatAnthropic client
+    llm = ChatAnthropic(
+        model="claude-haiku-4-5-20251001",
+        max_tokens=4096,
+        api_key=anthropic_api_key,
+    )
 
     # Accumulate full response
     full_response = ""
 
-    async with client.messages.stream(
-        model="claude-sonnet-4-5-20250929",
-        max_tokens=4096,
-        system=system_prompt,
-        messages=claude_messages,
-    ) as response:
-        async for text in response.text_stream:
+    async for chunk in llm.astream(langchain_messages):
+        text = chunk.content
+        if text:
             full_response += text
             yield Sse.text(text)
 
