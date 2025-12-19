@@ -6,6 +6,7 @@ import {
   PlusIcon,
   TrashIcon,
   MoreHorizontalIcon,
+  HistoryIcon,
 } from "lucide-react"
 import {
   Sidebar,
@@ -118,53 +119,68 @@ export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Loading state */}
-              {isLoading && (
-                <>
-                  <SidebarMenuSkeleton showIcon />
-                  <SidebarMenuSkeleton showIcon />
-                  <SidebarMenuSkeleton showIcon />
-                </>
-              )}
+              {/* History button - visible when collapsed */}
+              <SidebarMenuItem className="hidden group-data-[collapsible=icon]:block">
+                <SidebarMenuButton
+                  onClick={() => router.push("/chats")}
+                  isActive={pathname === "/chats"}
+                  tooltip="Chat History"
+                >
+                  <HistoryIcon className="size-4" />
+                  <span>History</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
-              {/* Chat list */}
-              {!isLoading && chats.map((chat) => (
-                <SidebarMenuItem key={chat.id}>
-                  <SidebarMenuButton
-                    onClick={() => router.push(`/chat/${chat.id}`)}
-                    isActive={pathname === `/chat/${chat.id}`}
-                    tooltip={formatChatTitle(chat)}
-                  >
-                    <span className="truncate">{formatChatTitle(chat)}</span>
-                  </SidebarMenuButton>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger
-                      render={
-                        <SidebarMenuAction showOnHover>
-                          <MoreHorizontalIcon className="size-4" />
-                          <span className="sr-only">More</span>
-                        </SidebarMenuAction>
-                      }
-                    />
-                    <DropdownMenuContent side="right" align="start">
-                      <DropdownMenuItem
-                        className="text-destructive focus:text-destructive"
-                        onClick={(e) => handleDeleteChat(chat.id, e)}
-                      >
-                        <TrashIcon className="size-4 mr-2" />
-                        Delete
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </SidebarMenuItem>
-              ))}
+              {/* Chat list - hidden when collapsed */}
+              <div className="group-data-[collapsible=icon]:hidden">
+                {/* Loading state */}
+                {isLoading && (
+                  <>
+                    <SidebarMenuSkeleton />
+                    <SidebarMenuSkeleton />
+                    <SidebarMenuSkeleton />
+                  </>
+                )}
 
-              {/* Empty state */}
-              {!isLoading && chats.length === 0 && (
-                <div className="px-2 py-4 text-sm text-muted-foreground text-center group-data-[collapsible=icon]:hidden">
-                  No chats yet
-                </div>
-              )}
+                {/* Chat list */}
+                {!isLoading && chats.map((chat) => (
+                  <SidebarMenuItem key={chat.id}>
+                    <SidebarMenuButton
+                      onClick={() => router.push(`/chat/${chat.id}`)}
+                      isActive={pathname === `/chat/${chat.id}`}
+                      tooltip={formatChatTitle(chat)}
+                    >
+                      <span className="truncate">{formatChatTitle(chat)}</span>
+                    </SidebarMenuButton>
+                    <DropdownMenu>
+                      <DropdownMenuTrigger
+                        render={
+                          <SidebarMenuAction showOnHover>
+                            <MoreHorizontalIcon className="size-4" />
+                            <span className="sr-only">More</span>
+                          </SidebarMenuAction>
+                        }
+                      />
+                      <DropdownMenuContent side="right" align="start">
+                        <DropdownMenuItem
+                          className="text-destructive focus:text-destructive"
+                          onClick={(e) => handleDeleteChat(chat.id, e)}
+                        >
+                          <TrashIcon className="size-4 mr-2" />
+                          Delete
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  </SidebarMenuItem>
+                ))}
+
+                {/* Empty state */}
+                {!isLoading && chats.length === 0 && (
+                  <div className="px-2 py-4 text-sm text-muted-foreground text-center">
+                    No chats yet
+                  </div>
+                )}
+              </div>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
