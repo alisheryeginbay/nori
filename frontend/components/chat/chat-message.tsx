@@ -67,11 +67,22 @@ export function ChatMessage({ message }: ChatMessageProps) {
             code({ className, children, ...props }) {
               const match = /language-(\w+)/.exec(className || "")
               const code = String(children).replace(/\n$/, "")
+              const isMultiLine = code.includes("\n")
 
               if (match) {
                 return <CodeBlock language={match[1]} code={code} />
               }
 
+              // Multi-line code without language - render as plain block
+              if (isMultiLine) {
+                return (
+                  <pre className="bg-zinc-800 text-zinc-100 rounded-lg p-4 overflow-x-auto text-sm font-mono whitespace-pre">
+                    {code}
+                  </pre>
+                )
+              }
+
+              // Inline code
               return (
                 <code
                   className="bg-zinc-700 text-zinc-100 px-1.5 py-0.5 rounded text-sm font-mono"
