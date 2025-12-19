@@ -1,7 +1,6 @@
 "use client"
 
 import * as React from "react"
-import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
 import {
   MessageSquareIcon,
@@ -90,10 +89,13 @@ export function AppSidebar({ userId }: AppSidebarProps) {
     <Sidebar collapsible="icon">
       <SidebarHeader className="border-b">
         <div className="flex items-center gap-2 px-2 py-1">
-          <Link href="/" className="flex items-center gap-2 font-semibold text-sm hover:opacity-80 transition-opacity">
+          <button
+            onClick={() => router.push("/")}
+            className="flex items-center gap-2 font-semibold text-sm hover:opacity-80 transition-opacity cursor-pointer"
+          >
             <img src="/logo.svg" className="size-4" alt="" />
             <span className="group-data-[collapsible=icon]:hidden">Nori</span>
-          </Link>
+          </button>
         </div>
       </SidebarHeader>
 
@@ -107,7 +109,7 @@ export function AppSidebar({ userId }: AppSidebarProps) {
               {/* New Chat button */}
               <SidebarMenuItem>
                 <SidebarMenuButton
-                  render={<Link href="/" />}
+                  onClick={() => router.push("/")}
                   tooltip="New Chat"
                 >
                   <PlusIcon className="size-4" />
@@ -128,7 +130,7 @@ export function AppSidebar({ userId }: AppSidebarProps) {
               {!isLoading && chats.map((chat) => (
                 <SidebarMenuItem key={chat.id}>
                   <SidebarMenuButton
-                    render={<Link href={`/chat/${chat.id}`} />}
+                    onClick={() => router.push(`/chat/${chat.id}`)}
                     isActive={pathname === `/chat/${chat.id}`}
                     tooltip={formatChatTitle(chat)}
                   >
