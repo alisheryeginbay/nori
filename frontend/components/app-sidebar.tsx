@@ -3,7 +3,6 @@
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
 import {
-  MessageSquareIcon,
   PlusIcon,
   TrashIcon,
   MoreHorizontalIcon,
@@ -23,20 +22,21 @@ import {
   SidebarFooter,
   SidebarTrigger,
 } from "@/components/ui/sidebar"
-import { Button } from "@/components/ui/button"
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { getChats, deleteChat, type Chat } from "@/lib/api"
 
 interface AppSidebarProps {
-  userId: string
+  user: SerializedUser
+  onOpenSettings: () => void
 }
 
-export function AppSidebar({ userId }: AppSidebarProps) {
+export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
   const [chats, setChats] = React.useState<Chat[]>([])
@@ -44,11 +44,11 @@ export function AppSidebar({ userId }: AppSidebarProps) {
 
   // Fetch chats on mount
   React.useEffect(() => {
-    getChats(userId)
+    getChats(user.id)
       .then(setChats)
       .catch(console.error)
       .finally(() => setIsLoading(false))
-  }, [userId])
+  }, [user.id])
 
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.preventDefault()
@@ -87,15 +87,16 @@ export function AppSidebar({ userId }: AppSidebarProps) {
 
   return (
     <Sidebar collapsible="icon">
-      <SidebarHeader className="border-b">
-        <div className="flex items-center gap-2 px-2 py-1">
+      <SidebarHeader>
+        <div className="flex items-center justify-between px-2 py-1 group-data-[collapsible=icon]:justify-center">
           <button
             onClick={() => router.push("/")}
-            className="flex items-center gap-2 font-semibold text-sm hover:opacity-80 transition-opacity cursor-pointer"
+            className="flex items-center gap-2 font-semibold text-sm hover:opacity-80 transition-opacity cursor-pointer group-data-[collapsible=icon]:hidden"
           >
             <img src="/logo.svg" className="size-4" alt="" />
-            <span className="group-data-[collapsible=icon]:hidden">Nori</span>
+            <span>Nori</span>
           </button>
+          <SidebarTrigger />
         </div>
       </SidebarHeader>
 
@@ -134,7 +135,6 @@ export function AppSidebar({ userId }: AppSidebarProps) {
                     isActive={pathname === `/chat/${chat.id}`}
                     tooltip={formatChatTitle(chat)}
                   >
-                    <MessageSquareIcon className="size-4" />
                     <span className="truncate">{formatChatTitle(chat)}</span>
                   </SidebarMenuButton>
                   <DropdownMenu>
@@ -170,8 +170,8 @@ export function AppSidebar({ userId }: AppSidebarProps) {
         </SidebarGroup>
       </SidebarContent>
 
-      <SidebarFooter className="border-t">
-        <SidebarTrigger className="w-full justify-start" />
+      <SidebarFooter>
+        <UserMenu user={user} onOpenSettings={onOpenSettings} showName />
       </SidebarFooter>
     </Sidebar>
   )

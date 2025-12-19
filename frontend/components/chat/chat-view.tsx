@@ -2,7 +2,7 @@
 
 import * as React from "react"
 import { motion } from "motion/react"
-import { UserMenu, type SerializedUser } from "@/components/user-menu"
+import { type SerializedUser } from "@/components/user-menu"
 import { ChatMessage, type Message } from "./chat-message"
 import { ChatInput } from "./chat-input"
 import { SettingsDialog } from "@/components/settings-dialog"
@@ -10,7 +10,6 @@ import { AppSidebar } from "@/components/app-sidebar"
 import {
   SidebarProvider,
   SidebarInset,
-  SidebarTrigger,
 } from "@/components/ui/sidebar"
 import type { GitHubRepo } from "@/app/api/github/repos/route"
 import {
@@ -135,19 +134,9 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
 
   return (
     <SidebarProvider>
-      <AppSidebar userId={user.id} />
+      <AppSidebar user={user} onOpenSettings={() => setSettingsOpen(true)} />
       <SidebarInset>
         <div className="flex flex-col h-screen bg-background">
-          <header className="shrink-0 px-4 py-4 border-b">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <SidebarTrigger className="-ml-1" />
-                <span className="text-sm text-muted-foreground">{chat.repo_id}</span>
-              </div>
-              <UserMenu user={user} onOpenSettings={() => setSettingsOpen(true)} />
-            </div>
-          </header>
-
           <div className="flex-1 min-h-0 relative">
             {/* Welcome message */}
             {messages.length === 0 && (

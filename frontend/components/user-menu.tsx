@@ -24,26 +24,34 @@ export interface SerializedUser {
 interface UserMenuProps {
   user: SerializedUser
   onOpenSettings?: () => void
+  showName?: boolean
 }
 
-export function UserMenu({ user, onOpenSettings }: UserMenuProps) {
+export function UserMenu({ user, onOpenSettings, showName = false }: UserMenuProps) {
   const { signOut } = useClerk()
 
   const initials = user.firstName && user.lastName
     ? `${user.firstName[0]}${user.lastName[0]}`
     : user.email?.[0]?.toUpperCase() ?? "U"
 
+  const displayName = user.fullName ?? user.firstName ?? user.email
+
   return (
     <DropdownMenu>
-      <DropdownMenuTrigger className="flex items-center justify-center size-8 rounded-full bg-muted hover:bg-muted/80 transition-colors focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 overflow-hidden">
-        {user.imageUrl ? (
-          <img
-            src={user.imageUrl}
-            alt={user.fullName ?? "User"}
-            className="size-full object-cover"
-          />
-        ) : (
-          <span className="text-sm font-medium">{initials}</span>
+      <DropdownMenuTrigger className="flex items-center gap-2 rounded-md p-1 hover:bg-sidebar-accent transition-colors focus:outline-none cursor-pointer">
+        <div className="flex items-center justify-center size-7 rounded-full bg-muted overflow-hidden shrink-0">
+          {user.imageUrl ? (
+            <img
+              src={user.imageUrl}
+              alt={user.fullName ?? "User"}
+              className="size-full object-cover"
+            />
+          ) : (
+            <span className="text-sm font-medium">{initials}</span>
+          )}
+        </div>
+        {showName && displayName && (
+          <span className="text-sm truncate group-data-[collapsible=icon]:hidden">{displayName}</span>
         )}
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" sideOffset={8} className="min-w-56">
