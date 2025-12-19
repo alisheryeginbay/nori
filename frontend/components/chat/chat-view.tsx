@@ -180,7 +180,7 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
 
             {/* Messages area */}
             <div className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
-              <div className="px-8 py-6 pb-24 space-y-4">
+              <div className="max-w-[1000px] mx-auto px-8 py-6 pb-24 space-y-6">
                 {messages.map((message) => (
                   <motion.div
                     key={message.id}
@@ -195,14 +195,11 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
                   <motion.div
                     initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    className="flex justify-start"
                   >
-                    <div className="bg-muted rounded-2xl rounded-bl-md px-4 py-2.5">
-                      <div className="flex gap-1">
-                        <span className="size-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
-                        <span className="size-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
-                        <span className="size-2 bg-foreground/40 rounded-full animate-bounce" />
-                      </div>
+                    <div className="flex gap-1">
+                      <span className="size-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.3s]" />
+                      <span className="size-2 bg-foreground/40 rounded-full animate-bounce [animation-delay:-0.15s]" />
+                      <span className="size-2 bg-foreground/40 rounded-full animate-bounce" />
                     </div>
                   </motion.div>
                 )}
@@ -211,12 +208,14 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
             </div>
 
             {/* Input area */}
-            <div className="absolute bottom-0 left-0 right-0 px-8 py-4 bg-gradient-to-t from-background via-background to-transparent">
-              <ChatInput
-                onSend={handleSend}
-                disabled={isLoading}
-                placeholder={`Ask about ${repoName}...`}
-              />
+            <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-background via-background to-transparent">
+              <div className="max-w-[1000px] mx-auto px-8 py-4">
+                <ChatInput
+                  onSend={handleSend}
+                  disabled={isLoading}
+                  placeholder={`Ask about ${repoName}...`}
+                />
+              </div>
             </div>
           </div>
         </div>
