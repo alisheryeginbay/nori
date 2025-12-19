@@ -37,6 +37,9 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
   const [settingsOpen, setSettingsOpen] = React.useState(false)
 
   const messagesEndRef = React.useRef<HTMLDivElement>(null)
+  const scrollContainerRef = React.useRef<HTMLDivElement>(null)
+  const shouldAutoScroll = React.useRef(true)
+  const lastScrollTop = React.useRef(0)
 
   // Get repo info from chat.repo_id (format: owner/repo)
   const [owner, repoName] = chat.repo_id.split("/")
@@ -49,7 +52,30 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
   }, [user.id])
 
   const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    if (shouldAutoScroll.current) {
+      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
+    }
+  }
+
+  // Disable auto-scroll when user scrolls up, re-enable when at bottom
+  const handleScroll = () => {
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    const { scrollTop, scrollHeight, clientHeight } = container
+    const isAtBottom = scrollHeight - scrollTop - clientHeight < 50
+
+    // User scrolled up - disable auto-scroll
+    if (scrollTop < lastScrollTop.current && !isAtBottom) {
+      shouldAutoScroll.current = false
+    }
+
+    // User is at bottom - re-enable auto-scroll
+    if (isAtBottom) {
+      shouldAutoScroll.current = true
+    }
+
+    lastScrollTop.current = scrollTop
   }
 
   React.useEffect(() => {
@@ -71,6 +97,7 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
 
     setMessages((prev) => [...prev, userMessage])
     setIsLoading(true)
+    shouldAutoScroll.current = true
 
     const assistantId = (Date.now() + 1).toString()
     let assistantMessageAdded = false
@@ -179,7 +206,11 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
             )}
 
             {/* Messages area */}
-            <div className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]">
+            <div
+              ref={scrollContainerRef}
+              onScroll={handleScroll}
+              className="h-full overflow-y-auto [&::-webkit-scrollbar]:hidden [scrollbar-width:none]"
+            >
               <div className="max-w-[1000px] mx-auto px-8 py-6 pb-24 space-y-6">
                 {messages.map((message) => (
                   <motion.div
