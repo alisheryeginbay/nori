@@ -3,7 +3,7 @@
 import * as React from "react"
 import ReactMarkdown from "react-markdown"
 import remarkGfm from "remark-gfm"
-import { codeToHtml } from "shiki"
+import { Highlight, themes } from "prism-react-renderer"
 import { cn } from "@/lib/utils"
 
 export interface Source {
@@ -25,28 +25,23 @@ interface ChatMessageProps {
 }
 
 function CodeBlock({ language, code }: { language: string; code: string }) {
-  const [html, setHtml] = React.useState<string | null>(null)
-
-  React.useEffect(() => {
-    codeToHtml(code, {
-      lang: language,
-      theme: "github-dark",
-    }).then(setHtml).catch(() => setHtml(null))
-  }, [code, language])
-
-  if (!html) {
-    return (
-      <pre className="bg-zinc-900 text-zinc-100 rounded-lg p-4 overflow-x-auto text-sm">
-        <code>{code}</code>
-      </pre>
-    )
-  }
-
   return (
-    <div
-      className="rounded-lg overflow-x-auto text-sm [&_pre]:p-4 [&_pre]:m-0"
-      dangerouslySetInnerHTML={{ __html: html }}
-    />
+    <Highlight theme={themes.vsDark} code={code} language={language}>
+      {({ style, tokens, getLineProps, getTokenProps }) => (
+        <pre
+          className="rounded-lg p-4 overflow-x-auto text-sm"
+          style={{ ...style, margin: 0 }}
+        >
+          {tokens.map((line, i) => (
+            <div key={i} {...getLineProps({ line })}>
+              {line.map((token, key) => (
+                <span key={key} {...getTokenProps({ token })} />
+              ))}
+            </div>
+          ))}
+        </pre>
+      )}
+    </Highlight>
   )
 }
 
