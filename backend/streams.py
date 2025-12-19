@@ -2,8 +2,8 @@ import json
 from typing import AsyncIterator
 from uuid import UUID
 
-import chromadb
 from langchain_anthropic import ChatAnthropic
+from langchain_chroma import Chroma
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 import db
@@ -34,16 +34,13 @@ class Sse:
 
 
 async def stream_chat_response(
-    collection: chromadb.Collection,
+    vectorstore: Chroma,
     repo_id: str,
     messages: list[dict],
     chat_id: UUID,
     anthropic_api_key: str,
 ) -> AsyncIterator[dict]:
     """Stream chat response with full conversation history."""
-    import voyageai
-    from config import settings
-
     # Get the latest user message for RAG query
     latest_user_message = next(
         (m for m in reversed(messages) if m["role"] == "user"), None
@@ -53,30 +50,26 @@ async def stream_chat_response(
         yield Sse.error("No user message found")
         return
 
-    voyage_client = voyageai.Client(api_key=settings.voyage_api_key)
-    query_embedding = voyage_client.embed(
-        [latest_user_message["content"]], model="voyage-code-3", input_type="query"
-    ).embeddings[0]
-
-    # Query relevant code chunks based on latest message
-    results = collection.query(
-        query_embeddings=[query_embedding],
-        n_results=5,
-        where={"repo": repo_id},
+    # Query relevant code chunks using vectorstore
+    results = vectorstore.similarity_search(
+        latest_user_message["content"],
+        k=5,
+        filter={"repo": repo_id},
     )
 
-    if not results["documents"][0]:
+    if not results:
         yield Sse.error("No relevant code found")
         return
 
-    sources = results["metadatas"][0]
+    # Extract sources from document metadata
+    sources = [doc.metadata for doc in results]
     yield Sse.sources(sources)
 
     # Build code context
     code_context = "\n\n".join(
         [
-            f"### {m['file']} ({m['name']})\n```\n{doc}\n```"
-            for doc, m in zip(results["documents"][0], sources)
+            f"### {doc.metadata['file']} ({doc.metadata['name']})\n```\n{doc.page_content}\n```"
+            for doc in results
         ]
     )
 

@@ -10,8 +10,7 @@ class Settings(BaseSettings):
     clerk_webhook_secret: str | None = None
 
     # Chroma local (dev)
-    chroma_host: str = "chromadb"
-    chroma_port: int = 8000
+    chroma_persist_dir: str = ".chroma"
 
     # Chroma Cloud (prod)
     chroma_cloud_api_key: str | None = None

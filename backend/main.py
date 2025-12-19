@@ -2,16 +2,13 @@ from contextlib import asynccontextmanager
 from typing import Annotated, AsyncIterator
 from uuid import UUID
 
-import chromadb
+from langchain_chroma import Chroma
+from langchain_core.documents import Document
 from sse_starlette.sse import EventSourceResponse
 from pydantic import BaseModel
 from streams import stream_chat_response
 from github import index_repo
-from chroma_service import (
-    get_chroma_client,
-    get_repos_collection,
-)
-from embedding_service import embed_texts
+from chroma_service import get_vectorstore
 from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
@@ -40,8 +37,7 @@ app.add_middleware(
 )
 
 
-ChromaClientDep = Annotated[chromadb.HttpClient, Depends(get_chroma_client)]
-ReposDep = Annotated[chromadb.Collection, Depends(get_repos_collection)]
+VectorStoreDep = Annotated[Chroma, Depends(get_vectorstore)]
 
 
 @app.get("/")
@@ -50,21 +46,19 @@ async def root():
 
 
 @app.get("/health")
-async def health(client: ChromaClientDep):
+async def health(vectorstore: VectorStoreDep):
     try:
-        heartbeat = client.heartbeat()
-        return {"status": "ok", "chroma": heartbeat}
+        # Quick check that vectorstore is accessible
+        vectorstore._collection.count()
+        return {"status": "ok", "chroma": "connected"}
     except Exception:
         return {"status": "degraded", "chroma": "unavailable"}
 
 
 @app.post("/add")
-async def test(text: str, repos: ReposDep):
-    repos.add(
-        ids=[str(hash(text))],
-        embeddings=embed_texts([text]),
-        documents=[text],
-    )
+async def test(text: str, vectorstore: VectorStoreDep):
+    doc = Document(page_content=text, id=str(hash(text)))
+    vectorstore.add_documents([doc])
 
 
 # --- Repos Endpoints ---
@@ -76,12 +70,11 @@ MAX_REPO_SIZE_MB = 50  # Temporary limit
 async def index_repo_stream(
     owner: str,
     repo: str,
-    collection: chromadb.Collection,
+    vectorstore: Chroma,
 ) -> AsyncIterator[dict]:
     """Stream repo indexing progress as SSE events."""
     import json
     import httpx
-    import voyageai
 
     repo_id = f"{owner}/{repo}"
 
@@ -144,33 +137,29 @@ async def index_repo_stream(
             "chunks": len(chunks),
         })}
 
-        voyage_client = voyageai.Client(api_key=settings.voyage_api_key)
-
-        # Batch embed
-        embeddings = voyage_client.embed(
-            [chunk["content"] for chunk in chunks],
-            model="voyage-code-3",
-            input_type="document",
-        ).embeddings
+        # Build LangChain documents
+        docs = [
+            Document(
+                page_content=chunk["content"],
+                metadata={
+                    "repo": repo_id,
+                    "file": chunk["file"],
+                    "type": chunk["type"],
+                    "name": chunk["name"],
+                    "line": chunk["line"],
+                },
+                id=f"{owner}::{repo}::{chunk['file']}::{chunk['name']}::{chunk['line']}",
+            )
+            for chunk in chunks
+        ]
 
         yield {"event": "status", "data": json.dumps({
             "stage": "storing",
             "progress": 80,
         })}
 
-        # Store in ChromaDB
-        for chunk, embedding in zip(chunks, embeddings):
-            collection.add(
-                ids=[f"{owner}::{repo}::{chunk['file']}::{chunk['name']}"],
-                embeddings=[embedding],
-                documents=[chunk["content"]],
-                metadatas=[{
-                    "repo": repo_id,
-                    "file": chunk["file"],
-                    "type": chunk["type"],
-                    "name": chunk["name"],
-                }],
-            )
+        # Store in vectorstore (embeddings computed automatically)
+        vectorstore.add_documents(docs)
 
         # Update repo status
         await db.update_repo_status(repo_id, "ready", chunks_count=len(chunks))
@@ -195,10 +184,10 @@ async def index_repo_endpoint(
     owner: str,
     repo: str,
     body: IndexRepoRequest,
-    collection: ReposDep,
+    vectorstore: VectorStoreDep,
 ):
     return EventSourceResponse(
-        index_repo_stream(owner, repo, collection),
+        index_repo_stream(owner, repo, vectorstore),
         media_type="text/event-stream",
     )
 
@@ -264,7 +253,7 @@ async def delete_chat(chat_id: UUID):
 async def send_message(
     chat_id: UUID,
     body: SendMessageRequest,
-    collection: ReposDep,
+    vectorstore: VectorStoreDep,
 ):
     # Get chat
     chat = await db.get_chat(chat_id)
@@ -287,7 +276,7 @@ async def send_message(
 
     return EventSourceResponse(
         stream_chat_response(
-            collection=collection,
+            vectorstore=vectorstore,
             repo_id=chat["repo_id"],
             messages=messages,
             chat_id=chat_id,

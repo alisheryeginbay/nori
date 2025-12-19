@@ -10,23 +10,15 @@ services:
         - action: sync+restart
           path: .
           target: /app
+          ignore:
+            - .chroma/
     volumes:
       - /app/.venv
+      - ./.chroma:/app/.chroma
     depends_on:
-      - chromadb
       - postgres
     environment:
-      - CHROMA_HOST=chromadb
-      - CHROMA_PORT=8000
-      - DATABASE_URL=postgresql://nori:nori@postgres:5432/nori
       - PYTHONUNBUFFERED=1
-
-  chromadb:
-    image: chromadb/chroma:latest
-    ports:
-      - "8001:8000"
-    volumes:
-      - chroma_data:/chroma/chroma
 
   postgres:
     image: postgres:16-alpine
@@ -40,5 +32,4 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
 volumes:
-  chroma_data:
   postgres_data:

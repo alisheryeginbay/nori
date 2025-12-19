@@ -7,7 +7,7 @@ def chunk_python_file(content: str, file_path: str) -> list[dict]:
     try:
         tree = ast.parse(content)
     except SyntaxError:
-        return [{"content": content, "file": file_path, "type": "file"}]
+        return [{"content": content, "file": file_path, "type": "file", "name": "file", "line": 1}]
 
     for node in ast.walk(tree):
         if isinstance(node, ast.FunctionDef):
@@ -18,6 +18,7 @@ def chunk_python_file(content: str, file_path: str) -> list[dict]:
                     "file": file_path,
                     "type": "function",
                     "name": node.name,
+                    "line": node.lineno,
                 }
             )
 
@@ -29,6 +30,7 @@ def chunk_python_file(content: str, file_path: str) -> list[dict]:
                     "file": file_path,
                     "type": "class",
                     "name": node.name,
+                    "line": node.lineno,
                 }
             )
 
@@ -39,6 +41,7 @@ def chunk_python_file(content: str, file_path: str) -> list[dict]:
                 "file": file_path,
                 "type": "docstring",
                 "name": "module",
+                "line": 1,
             }
         )
 
