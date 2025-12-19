@@ -40,6 +40,7 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
   const scrollContainerRef = React.useRef<HTMLDivElement>(null)
   const shouldAutoScroll = React.useRef(true)
   const lastScrollTop = React.useRef(0)
+  const isScrollingProgrammatically = React.useRef(false)
 
   // Get repo info from chat.repo_id (format: owner/repo)
   const [owner, repoName] = chat.repo_id.split("/")
@@ -51,14 +52,27 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
       .catch(() => setHasApiKey(false))
   }, [user.id])
 
-  const scrollToBottom = () => {
-    if (shouldAutoScroll.current) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }
-  }
+  const scrollToBottom = React.useCallback(() => {
+    if (!shouldAutoScroll.current) return
+    const container = scrollContainerRef.current
+    if (!container) return
+
+    // Mark as programmatic scroll to avoid triggering user scroll detection
+    isScrollingProgrammatically.current = true
+    container.scrollTop = container.scrollHeight
+    lastScrollTop.current = container.scrollTop
+
+    // Reset flag after scroll completes
+    requestAnimationFrame(() => {
+      isScrollingProgrammatically.current = false
+    })
+  }, [])
 
   // Disable auto-scroll when user scrolls up, re-enable when at bottom
   const handleScroll = () => {
+    // Ignore programmatic scrolls
+    if (isScrollingProgrammatically.current) return
+
     const container = scrollContainerRef.current
     if (!container) return
 
@@ -78,9 +92,10 @@ export function ChatView({ user, chat, repos }: ChatViewProps) {
     lastScrollTop.current = scrollTop
   }
 
+  // Scroll on message changes
   React.useEffect(() => {
     scrollToBottom()
-  }, [messages])
+  }, [messages, scrollToBottom])
 
   const handleSend = async (content: string) => {
     // Check if user has API key
