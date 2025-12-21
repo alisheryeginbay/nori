@@ -15,4 +15,5 @@ dependencies = [
     "sse-starlette>=3.0.4",
     "svix>=1.17.0",
     "langchain-voyageai>=0.3.0",
+    "cohere>=5.0.0",
 ]

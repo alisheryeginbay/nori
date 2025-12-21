@@ -6,6 +6,7 @@ class Settings(BaseSettings):
     app_env: str = "dev"
     frontend_url: str = "http://127.0.0.1:3000"
     voyage_api_key: str
+    cohere_api_key: str | None = None
     database_url: str = "postgresql://nori:nori@localhost:5432/nori"
     clerk_webhook_secret: str | None = None
 

@@ -2,11 +2,13 @@ import json
 from typing import AsyncIterator
 from uuid import UUID
 
+import cohere
 from langchain_anthropic import ChatAnthropic
 from langchain_chroma import Chroma
 from langchain_core.messages import HumanMessage, AIMessage, SystemMessage
 
 import db
+from config import settings
 
 
 class Sse:
@@ -51,15 +53,31 @@ async def stream_chat_response(
         return
 
     # Query relevant code chunks using vectorstore
+    # Retrieve more candidates for reranking
+    query = latest_user_message["content"]
     results = vectorstore.similarity_search(
-        latest_user_message["content"],
-        k=5,
+        query,
+        k=20,
         filter={"repo": repo_id},
     )
 
     if not results:
         yield Sse.error("No relevant code found")
         return
+
+    # Rerank results with Cohere for better precision
+    if settings.cohere_api_key:
+        co = cohere.Client(api_key=settings.cohere_api_key)
+        rerank_response = co.rerank(
+            model="rerank-english-v3.0",
+            query=query,
+            documents=[doc.page_content for doc in results],
+            top_n=5,
+        )
+        results = [results[r.index] for r in rerank_response.results]
+    else:
+        # Fallback to top 5 without reranking
+        results = results[:5]
 
     # Extract sources from document metadata
     sources = [doc.metadata for doc in results]
