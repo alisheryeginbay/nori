@@ -18,7 +18,7 @@ export function ChatInput({
 	className,
 }: ChatInputProps) {
 	const [value, setValue] = React.useState("");
-	const textareaRef = React.useRef<HTMLInputElement>(null);
+	const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
 	const handleSubmit = () => {
 		if (value.trim() && !disabled) {
@@ -80,7 +80,7 @@ export function ChatInput({
 						placeholder={placeholder}
 						disabled={disabled}
 						autoFocus
-						className="h-[24px] py-1 px-1"
+						className="min-h-[24px] py-1 px-1"
 					/>
 				</motion.div>
 			</motion.div>
