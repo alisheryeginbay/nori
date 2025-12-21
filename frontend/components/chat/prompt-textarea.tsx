@@ -39,6 +39,7 @@ export const PromptTextarea = React.forwardRef<HTMLTextAreaElement, PromptTextar
           "w-full bg-transparent text-base outline-none resize-none",
           "placeholder:text-muted-foreground",
           "disabled:cursor-not-allowed",
+          "!transition-none",
           className
         )}
         {...props}

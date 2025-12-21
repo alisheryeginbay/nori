@@ -59,50 +59,41 @@ export function ChatInput({
 	const showButton = value.trim().length > 0;
 
 	return (
-		<div className={cn("flex items-end gap-3", className)}>
-			<motion.div
-				layout
-				transition={{ type: "spring", stiffness: 500, damping: 30 }}
-				onClick={() => textareaRef.current?.focus()}
-				className={cn(
-					"flex-1 flex items-end p-3 rounded-2xl cursor-text",
-					"bg-card backdrop-blur-xl",
-					"border border-border",
-					"ring-1 ring-black/5 dark:ring-white/5",
-				)}
-			>
-				<motion.div layout="position" className="w-full flex">
-					<PromptTextarea
-						ref={textareaRef}
-						value={value}
-						onChange={(e) => setValue(e.target.value)}
-						onSubmit={handleSubmit}
-						placeholder={placeholder}
-						disabled={disabled}
-						autoFocus
-						className="min-h-[24px] py-1 px-1"
-					/>
-				</motion.div>
-			</motion.div>
-			<AnimatePresence mode="popLayout">
+		<div
+			onClick={() => textareaRef.current?.focus()}
+			className={cn(
+				"relative flex items-end p-3 rounded-2xl cursor-text",
+				"bg-card backdrop-blur-xl",
+				"border border-border",
+				"ring-1 ring-black/5 dark:ring-white/5",
+				className,
+			)}
+		>
+			<PromptTextarea
+				ref={textareaRef}
+				value={value}
+				onChange={(e) => setValue(e.target.value)}
+				onSubmit={handleSubmit}
+				placeholder={placeholder}
+				disabled={disabled}
+				autoFocus
+				className="min-h-[24px] py-1 px-1 pr-12"
+			/>
+			<AnimatePresence>
 				{showButton && (
-					<motion.div
-						layout
+					<motion.button
+						type="button"
+						onClick={handleSubmit}
+						disabled={disabled}
+						aria-label="Send message"
 						initial={{ opacity: 0, scale: 0.5 }}
 						animate={{ opacity: 1, scale: 1 }}
 						exit={{ opacity: 0, scale: 0.5 }}
 						transition={{ type: "spring", stiffness: 500, damping: 30 }}
+						className="absolute right-3 bottom-3 size-8 rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white border-none flex items-center justify-center disabled:opacity-50 cursor-pointer"
 					>
-						<button
-							type="button"
-							onClick={handleSubmit}
-							disabled={disabled}
-							aria-label="Send message"
-							className="size-[48px] rounded-full bg-[#1DB954] hover:bg-[#1ed760] text-white border-none flex items-center justify-center disabled:opacity-50"
-						>
-							<ArrowUp className="size-5" />
-						</button>
-					</motion.div>
+						<ArrowUp className="size-4" />
+					</motion.button>
 				)}
 			</AnimatePresence>
 		</div>
