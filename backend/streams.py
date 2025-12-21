@@ -52,9 +52,13 @@ async def stream_chat_response(
         yield Sse.error("No user message found")
         return
 
+    # Build query from last N user messages for better context
+    user_messages = [m["content"] for m in messages if m["role"] == "user"]
+    last_n_messages = user_messages[-3:]  # Last 3 turns
+    query = "\n".join(last_n_messages)
+
     # Query relevant code chunks using vectorstore
     # Retrieve more candidates for reranking
-    query = latest_user_message["content"]
     results = vectorstore.similarity_search(
         query,
         k=20,
