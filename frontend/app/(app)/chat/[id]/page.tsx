@@ -1,4 +1,4 @@
-import { auth, clerkClient, currentUser } from "@clerk/nextjs/server"
+import { clerkClient, currentUser } from "@clerk/nextjs/server"
 import { redirect, notFound } from "next/navigation"
 import { ChatView } from "@/components/chat/chat-view"
 import { getChat } from "@/lib/api"
@@ -71,5 +71,5 @@ export default async function ChatPage({ params }: ChatPageProps) {
 
   const repos = await getGitHubRepos(user.id)
 
-  return <ChatView user={user} chat={chat} repos={repos} />
+  return <ChatView chat={chat} repos={repos} />
 }

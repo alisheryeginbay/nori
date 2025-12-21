@@ -1,4 +1,3 @@
-export { ChatLayout } from "./chat-layout"
 export { ChatView } from "./chat-view"
 export { ChatMessage, type Message } from "./chat-message"
 export { ChatInput } from "./chat-input"

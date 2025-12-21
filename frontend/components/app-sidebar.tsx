@@ -2,11 +2,13 @@
 
 import * as React from "react"
 import { usePathname, useRouter } from "next/navigation"
+import { useSignIn } from "@clerk/nextjs"
 import {
   PlusIcon,
   TrashIcon,
   MoreHorizontalIcon,
   HistoryIcon,
+  GithubIcon,
 } from "lucide-react"
 import {
   Sidebar,
@@ -29,27 +31,42 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { Button } from "@/components/ui/button"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { getChats, deleteChat, type Chat } from "@/lib/api"
 
 interface AppSidebarProps {
-  user: SerializedUser
+  user: SerializedUser | null
   onOpenSettings: () => void
 }
 
 export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
   const pathname = usePathname()
   const router = useRouter()
+  const { signIn, isLoaded } = useSignIn()
   const [chats, setChats] = React.useState<Chat[]>([])
   const [isLoading, setIsLoading] = React.useState(true)
 
-  // Fetch chats on mount
+  // Fetch chats on mount (only if user exists)
   React.useEffect(() => {
-    getChats(user.id)
-      .then(setChats)
-      .catch(console.error)
-      .finally(() => setIsLoading(false))
-  }, [user.id])
+    if (user) {
+      getChats(user.id)
+        .then(setChats)
+        .catch(console.error)
+        .finally(() => setIsLoading(false))
+    } else {
+      setIsLoading(false)
+    }
+  }, [user])
+
+  const signInWithGitHub = async () => {
+    if (!isLoaded || !signIn) return
+    await signIn.authenticateWithRedirect({
+      strategy: "oauth_github",
+      redirectUrl: "/sso-callback",
+      redirectUrlComplete: "/",
+    })
+  }
 
   const handleDeleteChat = async (chatId: string, e: React.MouseEvent) => {
     e.preventDefault()
@@ -187,7 +204,20 @@ export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
       </SidebarContent>
 
       <SidebarFooter>
-        <UserMenu user={user} onOpenSettings={onOpenSettings} showName />
+        {user ? (
+          <UserMenu user={user} onOpenSettings={onOpenSettings} showName />
+        ) : (
+          <Button
+            variant="outline"
+            size="sm"
+            className="w-full gap-2"
+            onClick={signInWithGitHub}
+            disabled={!isLoaded}
+          >
+            <GithubIcon className="size-4" />
+            <span className="group-data-[collapsible=icon]:hidden">Sign in with GitHub</span>
+          </Button>
+        )}
       </SidebarFooter>
     </Sidebar>
   )
