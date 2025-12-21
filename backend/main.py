@@ -378,6 +378,13 @@ async def update_api_keys(user_id: str, body: UpdateApiKeysRequest):
     return {"has_anthropic_key": has_anthropic_key}
 
 
+@app.get("/users/{user_id}/recent-repos")
+async def get_user_recent_repos(user_id: str, limit: int = 6):
+    """Get repos the user has recently chatted with."""
+    repos = await db.get_user_recent_repos(user_id, limit)
+    return repos
+
+
 # --- Clerk Webhook ---
 
 

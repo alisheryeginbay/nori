@@ -5,12 +5,15 @@ import { useRouter } from "next/navigation"
 import { motion, AnimatePresence } from "motion/react"
 import { ChatInput } from "@/components/chat/chat-input"
 import { IndexingView } from "@/components/chat/indexing-view"
+import { RecentRepoList } from "@/components/chat/recent-repo-list"
 import { useApp } from "@/components/app-shell"
 import {
   getRepoStatus,
   indexRepo,
   createChat,
+  getRecentRepos,
   type IndexProgress,
+  type RecentRepo,
 } from "@/lib/api"
 
 function parseGitHubUrl(text: string): { owner: string; repo: string } | null {
@@ -26,11 +29,46 @@ export function HomeView() {
   const { user, hasApiKey, openSettings } = useApp()
   const [isLoading, setIsLoading] = React.useState(false)
 
+  // Recent repos state
+  const [recentRepos, setRecentRepos] = React.useState<RecentRepo[]>([])
+  const [isLoadingRecent, setIsLoadingRecent] = React.useState(true)
+
   // Indexing state
   const [isIndexing, setIsIndexing] = React.useState(false)
   const [indexingRepo, setIndexingRepo] = React.useState<string>("")
   const [indexProgress, setIndexProgress] = React.useState<IndexProgress | null>(null)
   const [indexError, setIndexError] = React.useState<string | null>(null)
+
+  // Fetch recent repos on mount
+  React.useEffect(() => {
+    if (user) {
+      getRecentRepos(user.id)
+        .then(setRecentRepos)
+        .catch(console.error)
+        .finally(() => setIsLoadingRecent(false))
+    } else {
+      setIsLoadingRecent(false)
+    }
+  }, [user])
+
+  // Handler for selecting a recent repo
+  const handleRecentRepoSelect = async (repoId: string) => {
+    if (!user) return
+
+    if (!hasApiKey) {
+      openSettings()
+      return
+    }
+
+    setIsLoading(true)
+    try {
+      const chat = await createChat(user.id, repoId)
+      router.push(`/chat/${chat.id}`)
+    } catch (err) {
+      console.error("Failed to create chat:", err)
+      setIsLoading(false)
+    }
+  }
 
   const handleSend = async (content: string) => {
     if (!user) {
@@ -133,12 +171,25 @@ export function HomeView() {
                 </motion.span>
               ))}
             </h1>
-            <div className="w-full max-w-2xl">
+            <div className="w-full max-w-2xl space-y-6">
               <ChatInput
                 onSend={handleSend}
                 disabled={isLoading}
                 placeholder="Paste a GitHub URL..."
               />
+
+              {user && (recentRepos.length > 0 || isLoadingRecent) && (
+                <div className="space-y-3">
+                  <h2 className="text-sm font-medium text-muted-foreground">
+                    Continue
+                  </h2>
+                  <RecentRepoList
+                    repos={recentRepos}
+                    onSelect={handleRecentRepoSelect}
+                    isLoading={isLoadingRecent}
+                  />
+                </div>
+              )}
             </div>
           </motion.div>
         )}

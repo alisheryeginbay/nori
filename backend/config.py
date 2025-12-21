@@ -1,5 +1,5 @@
-from pydantic_settings import BaseSettings, SettingsConfigDict
 from pydantic import computed_field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
@@ -30,11 +30,13 @@ class Settings(BaseSettings):
     @computed_field
     @property
     def use_chroma_cloud(self) -> bool:
-        return self.is_production and all([
-            self.chroma_cloud_api_key,
-            self.chroma_cloud_tenant,
-            self.chroma_cloud_database,
-        ])
+        return self.is_production and all(
+            [
+                self.chroma_cloud_api_key,
+                self.chroma_cloud_tenant,
+                self.chroma_cloud_database,
+            ]
+        )
 
 
 settings = Settings()

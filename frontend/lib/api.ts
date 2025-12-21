@@ -42,6 +42,15 @@ export interface ChatWithMessages extends Chat {
   messages: ChatMessage[]
 }
 
+export interface RecentRepo {
+  id: string
+  status: "ready"
+  chunks_count: number
+  indexed_at: string
+  created_at: string
+  last_chatted_at: string
+}
+
 // --- User API ---
 
 export async function getUser(userId: string): Promise<UserData> {
@@ -75,6 +84,14 @@ export async function deleteApiKey(userId: string): Promise<{ has_anthropic_key:
   })
   if (!res.ok) {
     throw new Error("Failed to delete API key")
+  }
+  return res.json()
+}
+
+export async function getRecentRepos(userId: string): Promise<RecentRepo[]> {
+  const res = await fetch(`${BACKEND_URL}/users/${userId}/recent-repos`)
+  if (!res.ok) {
+    throw new Error("Failed to fetch recent repos")
   }
   return res.json()
 }

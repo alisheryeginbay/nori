@@ -240,6 +240,32 @@ async def update_repo_status(
             )
 
 
+async def get_user_recent_repos(user_id: str, limit: int = 6) -> list[dict]:
+    """Get repos the user has recently chatted with, ordered by last activity."""
+    async with get_connection() as conn:
+        rows = await conn.fetch(
+            """
+            SELECT
+                r.id,
+                r.status,
+                r.chunks_count,
+                r.indexed_at,
+                r.created_at,
+                MAX(c.updated_at) as last_chatted_at
+            FROM repos r
+            INNER JOIN chats c ON c.repo_id = r.id
+            WHERE c.user_id = $1
+              AND r.status = 'ready'
+            GROUP BY r.id
+            ORDER BY MAX(c.updated_at) DESC
+            LIMIT $2
+            """,
+            user_id,
+            limit,
+        )
+        return [dict(row) for row in rows]
+
+
 # Chat operations
 async def create_chat(user_id: str, repo_id: str, title: str | None = None) -> dict:
     async with get_connection() as conn:
