@@ -120,7 +120,10 @@ async def stream_chat_response(
 
     # Parallel retrieval for all queries
     async def search_query(q: str) -> list[Document]:
-        return vectorstore.similarity_search(q, k=10, filter={"repo": repo_id})
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: vectorstore.similarity_search(q, k=10, filter={"repo": repo_id})
+        )
 
     try:
         result_lists = await asyncio.gather(*[search_query(q) for q in all_queries])
