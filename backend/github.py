@@ -3,10 +3,21 @@ import tempfile
 from pathlib import Path
 
 from chunks import chunk_file, SUPPORTED_EXTENSIONS
+from errors import GitCloneError, handle_subprocess_error
 
 
 def clone_repo(repo_url: str, dest: Path):
-    subprocess.run(["git", "clone", "--depth", "1", repo_url, str(dest)], check=True)
+    """Clone a git repository with safe error handling."""
+    try:
+        subprocess.run(
+            ["git", "clone", "--depth", "1", repo_url, str(dest)],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+    except subprocess.CalledProcessError as e:
+        safe_msg = handle_subprocess_error(e)
+        raise GitCloneError(safe_msg) from e
 
 
 async def index_repo(repo_url: str) -> list[dict]:
