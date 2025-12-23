@@ -23,6 +23,13 @@ import db
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Configure logging
+    """
+    Manage application lifespan: configure root logging and initialize the database pool on startup, and close the pool on shutdown.
+    
+    This async context manager runs during FastAPI application startup and shutdown:
+    - On startup: sets up basic logging configuration and initializes the global database connection pool.
+    - On shutdown: closes the database connection pool.
+    """
     logging.basicConfig(
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -49,7 +56,18 @@ app.add_middleware(
 
 @app.exception_handler(Exception)
 async def global_exception_handler(request: Request, exc: Exception):
-    """Catch-all handler to prevent any exception leakage to clients."""
+    """
+    Handle uncaught exceptions by logging a sanitized error and returning a 500 JSON response.
+    
+    Logs the exception with a safe, client-facing message (via log_error) tagged with the request path, and returns a JSONResponse with a `detail` field containing that sanitized message.
+    
+    Parameters:
+        request (Request): The incoming HTTP request being processed.
+        exc (Exception): The unhandled exception that occurred.
+    
+    Returns:
+        JSONResponse: A response with HTTP status 500 and JSON content `{"detail": <sanitized message>}`.
+    """
     safe_msg = log_error(exc, f"unhandled:{request.url.path}")
     return JSONResponse(
         status_code=500,
@@ -92,7 +110,17 @@ async def index_repo_stream(
     repo: str,
     vectorstore: Chroma,
 ) -> AsyncIterator[dict]:
-    """Stream repo indexing progress as SSE events."""
+    """
+    Stream the repository indexing progress as Server-Sent Events.
+    
+    Emitted events (dicts) have the form {"event": <type>, "data": <json_string>}. Common event types:
+    - "status": progress update; `data` contains a JSON object with keys like "stage" (e.g., "cloning", "parsing", "embedding", "storing"), "progress" (numeric percent), and optional stage-specific fields ("files_found", "chunks").
+    - "done": indexing finished; `data` contains a JSON object with "status": "ready", "chunks_count" (int), optional "indexed_at" (ISO timestamp) when returned from cache, and "cached" (bool).
+    - "error": unrecoverable error; `data` contains a JSON object with "message" describing the error.
+    
+    Returns:
+        AsyncIterator[dict]: An asynchronous iterator yielding SSE event dictionaries as described above.
+    """
     import json
     import httpx
 

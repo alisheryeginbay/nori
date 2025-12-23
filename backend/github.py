@@ -7,7 +7,16 @@ from errors import GitCloneError, handle_subprocess_error
 
 
 def clone_repo(repo_url: str, dest: Path):
-    """Clone a git repository with safe error handling."""
+    """
+    Clone the git repository at repo_url into dest as a shallow (depth 1) clone.
+    
+    Parameters:
+        repo_url (str): Repository URL to clone.
+        dest (Path): Destination directory for the cloned repository.
+    
+    Raises:
+        GitCloneError: If the git clone command fails; the error message is converted to a sanitized, safe message.
+    """
     try:
         subprocess.run(
             ["git", "clone", "--depth", "1", repo_url, str(dest)],
@@ -21,7 +30,17 @@ def clone_repo(repo_url: str, dest: Path):
 
 
 async def index_repo(repo_url: str) -> list[dict]:
-    """Clone and index a repository, returning chunks for all supported languages."""
+    """
+    Clone a Git repository into a temporary directory and produce chunk dictionaries for supported source files.
+    
+    Files are recursively scanned; the function skips non-files, files with extensions not in SUPPORTED_EXTENSIONS, hidden files or files inside hidden directories, files located in common vendor/build/test/docs/asset directories, and files larger than 100 KB. Files that cannot be read are skipped.
+    
+    Parameters:
+        repo_url (str): URL of the git repository to clone.
+    
+    Returns:
+        list[dict]: Chunk dictionaries produced by `chunk_file` for each indexed file.
+    """
     all_chunks = []
 
     with tempfile.TemporaryDirectory() as tmpdir:

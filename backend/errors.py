@@ -58,10 +58,13 @@ DEFAULT_ERROR_MESSAGE = "An unexpected error occurred. Please try again."
 
 
 def sanitize_error_message(error: Exception) -> str:
-    """Remove sensitive data from error message for logging context.
-
-    Note: This is for sanitized logging, NOT for client display.
-    Use get_safe_error_message() for client-facing messages.
+    """
+    Redact sensitive substrings from an exception's message for safe logging.
+    
+    Intended for server-side logs; not for client-facing messages.
+    
+    Returns:
+        sanitized_message (str): The exception's message with substrings matching configured sensitive patterns replaced by "[REDACTED]".
     """
     message = str(error)
 
@@ -72,9 +75,13 @@ def sanitize_error_message(error: Exception) -> str:
 
 
 def get_safe_error_message(error: Exception) -> str:
-    """Get a safe, generic error message for client display.
-
-    Never returns the actual exception message - only predefined safe messages.
+    """
+    Retrieve a client-safe generic error message based on an exception's type.
+    
+    Matches the exception's type name and its parent classes against a predefined mapping and returns the corresponding safe message; if no match is found, returns DEFAULT_ERROR_MESSAGE.
+    
+    Returns:
+        str: A client-facing error message corresponding to the exception type.
     """
     error_type = type(error).__name__
 
@@ -122,13 +129,16 @@ def log_error(
 
 
 def handle_subprocess_error(error: subprocess.CalledProcessError) -> str:
-    """Handle subprocess errors safely without leaking command output.
-
-    Args:
-        error: The CalledProcessError from subprocess.run
-
+    """
+    Produce a client-safe message for a subprocess.CalledProcessError and log sanitized command output server-side.
+    
+    Sanitizes stdout/stderr before logging to avoid leaking sensitive data and returns a simplified, client-facing message. If the failed command appears to be a git clone, returns a clone-specific suggestion; otherwise returns a generic repository operation failure message.
+    
+    Parameters:
+        error (subprocess.CalledProcessError): The subprocess error containing return code, command, stdout, and stderr.
+    
     Returns:
-        Safe error message for client display
+        str: A safe, user-facing error message (clone-specific if the command contains "clone", otherwise a generic repository operation failure message).
     """
     # Log full details server-side (sanitized)
     stderr = error.stderr or ""
@@ -159,6 +169,13 @@ class GitCloneError(Exception):
     """Raised when git clone fails. Contains only safe message."""
 
     def __init__(self, safe_message: str):
+        """
+        Initialize the exception with a client-safe message and store it on the instance.
+        
+        Parameters:
+            safe_message (str): A message safe for exposure to clients; stored as `self.safe_message`
+                and used as the exception's message.
+        """
         self.safe_message = safe_message
         super().__init__(safe_message)
 
@@ -167,5 +184,11 @@ class VectorstoreError(Exception):
     """Raised when vectorstore operations fail. Contains only safe message."""
 
     def __init__(self, safe_message: str = "Vector search service unavailable"):
+        """
+        Initialize a VectorstoreError with a client-safe message.
+        
+        Parameters:
+            safe_message (str): Message safe to show to clients. Defaults to "Vector search service unavailable".
+        """
         self.safe_message = safe_message
         super().__init__(safe_message)

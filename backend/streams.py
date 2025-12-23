@@ -30,7 +30,18 @@ Output exactly 3 queries, one per line, no numbering or bullets:"""
 def reciprocal_rank_fusion(
     result_lists: list[list[Document]], k: int = 60
 ) -> list[Document]:
-    """Combine multiple ranked lists using Reciprocal Rank Fusion."""
+    """
+    Fuse multiple ranked lists of Document objects into a single ranking using Reciprocal Rank Fusion.
+    
+    This computes a fusion score for each document by summing 1 / (k + rank + 1) across input ranked lists, de-duplicates documents by a combined file identifier and the first 100 characters of their content, and returns Documents sorted by descending fused score.
+    
+    Parameters:
+        result_lists (list[list[Document]]): A list of ranked Document lists (each inner list is ordered from highest to lowest rank).
+        k (int): Dampening constant that reduces the influence of individual ranks (larger values make ranking contributions more uniform). Default is 60.
+    
+    Returns:
+        list[Document]: Documents ordered by their fused Reciprocal Rank Fusion score (highest score first).
+    """
     scores: dict[str, float] = defaultdict(float)
     doc_map: dict[str, Document] = {}
 
@@ -75,7 +86,27 @@ async def stream_chat_response(
     chat_id: UUID,
     anthropic_api_key: str,
 ) -> AsyncIterator[dict]:
-    """Stream chat response with full conversation history."""
+    """
+    Stream a retrieval-augmented assistant response for a repository-scoped conversation and yield Server-Sent Event (SSE) payloads.
+    
+    This function performs retrieval-augmented generation (RAG) using the latest user turns, generates alternate search queries, performs parallel vector searches, fuses and optionally reranks results, constructs a code-context-backed system prompt, streams the LLM's incremental assistant output to the caller, and persists the final assistant message.
+    
+    Parameters:
+        vectorstore (Chroma): Vector store used for similarity searches; results are filtered by `repo_id`.
+        repo_id (str): Repository identifier used to scope retrieval to a specific codebase.
+        messages (list[dict]): Conversation history as a list of message objects; each message must include at least:
+            - "role": either "user" or "assistant"
+            - "content": message text
+        chat_id (UUID): Identifier of the chat used when persisting the assistant message.
+        anthropic_api_key (str): API key for the Anthropic/Claude LLM used for query generation and streaming.
+    
+    Returns:
+        dict: SSE-formatted event dictionaries produced as an async iterator. Emitted events include:
+            - A "sources" event with a list of document metadata used as context.
+            - One or more "text" events containing incremental assistant output chunks.
+            - An "error" event with an error message if retrieval or streaming fails (may follow partial "text" events).
+            - A "done" event signaling completion.
+    """
     # Get the latest user message for RAG query
     latest_user_message = next(
         (m for m in reversed(messages) if m["role"] == "user"), None
@@ -120,6 +151,15 @@ async def stream_chat_response(
 
     # Parallel retrieval for all queries
     async def search_query(q: str) -> list[Document]:
+        """
+        Perform a vector similarity search against the repository-scoped vector store using the given query.
+        
+        Parameters:
+            q (str): The text query to search for.
+        
+        Returns:
+            list[Document]: Documents from the repository filtered by `repo_id`, ranked by relevance to `q`.
+        """
         return vectorstore.similarity_search(q, k=10, filter={"repo": repo_id})
 
     try:
