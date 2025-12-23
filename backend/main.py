@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
 from typing import Annotated, AsyncIterator
@@ -12,13 +13,20 @@ from streams import stream_chat_response
 from github import index_repo
 from chroma_service import get_vectorstore
 from fastapi import Depends, FastAPI, HTTPException, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 from config import settings
+from errors import log_error
 import db
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Configure logging
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    )
     await db.init_db()
     yield
     await db.close_pool()
@@ -37,6 +45,16 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    """Catch-all handler to prevent any exception leakage to clients."""
+    safe_msg = log_error(exc, f"unhandled:{request.url.path}")
+    return JSONResponse(
+        status_code=500,
+        content={"detail": safe_msg},
+    )
 
 
 VectorStoreDep = Annotated[Chroma, Depends(get_vectorstore)]
@@ -227,8 +245,9 @@ async def index_repo_stream(
         }
 
     except Exception as e:
-        await db.update_repo_status(repo_id, "error", error=str(e))
-        yield {"event": "error", "data": json.dumps({"message": str(e)})}
+        safe_msg = log_error(e, "repo_indexing", {"repo_id": repo_id})
+        await db.update_repo_status(repo_id, "error", error=safe_msg)
+        yield {"event": "error", "data": json.dumps({"message": safe_msg})}
 
 
 class IndexRepoRequest(BaseModel):
