@@ -151,16 +151,10 @@ async def stream_chat_response(
 
     # Parallel retrieval for all queries
     async def search_query(q: str) -> list[Document]:
-        """
-        Perform a vector similarity search against the repository-scoped vector store using the given query.
-        
-        Parameters:
-            q (str): The text query to search for.
-        
-        Returns:
-            list[Document]: Documents from the repository filtered by `repo_id`, ranked by relevance to `q`.
-        """
-        return vectorstore.similarity_search(q, k=10, filter={"repo": repo_id})
+        loop = asyncio.get_running_loop()
+        return await loop.run_in_executor(
+            None, lambda: vectorstore.similarity_search(q, k=10, filter={"repo": repo_id})
+        )
 
     try:
         result_lists = await asyncio.gather(*[search_query(q) for q in all_queries])
