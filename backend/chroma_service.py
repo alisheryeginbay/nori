@@ -12,7 +12,17 @@ logger = logging.getLogger("nori")
 
 @lru_cache
 def get_embeddings() -> VoyageAIEmbeddings:
-    """Get singleton embeddings instance."""
+    """
+    Return a singleton VoyageAIEmbeddings client configured for the "voyage-code-3" model.
+    
+    This function is lru_cache-decorated to provide a single shared embeddings instance per process. It initializes the embeddings client using the configured Voyage API key.
+    
+    Returns:
+        VoyageAIEmbeddings: Embeddings client configured for the "voyage-code-3" model.
+    
+    Raises:
+        VectorstoreError: If the embeddings client cannot be initialized.
+    """
     try:
         return VoyageAIEmbeddings(
             model="voyage-code-3",
@@ -25,7 +35,17 @@ def get_embeddings() -> VoyageAIEmbeddings:
 
 @lru_cache
 def get_vectorstore() -> Chroma:
-    """Get LangChain Chroma vectorstore."""
+    """
+    Provide a singleton LangChain Chroma vectorstore configured for either Chroma Cloud or local persistent storage.
+    
+    Uses application settings to choose the cloud client (when enabled) or a local persist directory and returns a Chroma instance for the "repos" collection. The function is cached to return a single instance per process.
+    
+    Returns:
+        Chroma: A configured Chroma instance targeting the "repos" collection.
+    
+    Raises:
+        VectorstoreError: If the vectorstore cannot be initialized or the service is unavailable.
+    """
     try:
         if settings.use_chroma_cloud:
             import chromadb
