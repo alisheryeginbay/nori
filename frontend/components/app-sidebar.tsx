@@ -7,7 +7,7 @@ import {
   PlusIcon,
   TrashIcon,
   MoreHorizontalIcon,
-  HistoryIcon,
+  MessageSquareIcon,
   GithubIcon,
   GlobeIcon,
 } from "lucide-react"
@@ -143,29 +143,27 @@ export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
                   <span>Public Repos</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => router.push("/chats")}
+                  isActive={pathname === "/chats"}
+                  tooltip="Chats"
+                >
+                  <MessageSquareIcon className="size-4" />
+                  <span>Chats</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
 
         {/* Chats */}
         <SidebarGroup>
-          <SidebarGroupLabel>
-            <span className="group-data-[collapsible=icon]:hidden">Chats</span>
+          <SidebarGroupLabel className="transition-none group-data-[collapsible=icon]:!mt-0 group-data-[collapsible=icon]:!opacity-100 group-data-[collapsible=icon]:hidden">
+            Chats
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* History button - visible when collapsed */}
-              <SidebarMenuItem className="hidden group-data-[collapsible=icon]:block">
-                <SidebarMenuButton
-                  onClick={() => router.push("/chats")}
-                  isActive={pathname === "/chats"}
-                  tooltip="Chat History"
-                >
-                  <HistoryIcon className="size-4" />
-                  <span>History</span>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-
               {/* Chat list - hidden when collapsed */}
               <div className="group-data-[collapsible=icon]:hidden">
                 {/* Loading state */}
