@@ -1,3 +1,4 @@
+import { cookies } from "next/headers"
 import { currentUser } from "@clerk/nextjs/server"
 import { AppShell } from "@/components/app-shell"
 
@@ -6,6 +7,9 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode
 }) {
+  const cookieStore = await cookies()
+  const sidebarOpen = cookieStore.get("sidebar_state")?.value !== "false"
+
   const clerkUser = await currentUser()
 
   const user = clerkUser
@@ -19,5 +23,5 @@ export default async function AppLayout({
       }
     : null
 
-  return <AppShell user={user}>{children}</AppShell>
+  return <AppShell user={user} defaultSidebarOpen={sidebarOpen}>{children}</AppShell>
 }
