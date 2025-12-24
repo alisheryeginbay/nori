@@ -160,7 +160,7 @@ export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
 
         {/* Chats */}
         <SidebarGroup>
-          <SidebarGroupLabel className="transition-none group-data-[collapsible=icon]:!mt-0 group-data-[collapsible=icon]:!opacity-100 group-data-[collapsible=icon]:hidden">
+          <SidebarGroupLabel className="transition-none group-data-[collapsible=icon]:!mt-0 group-data-[collapsible=icon]:hidden">
             Chats
           </SidebarGroupLabel>
           <SidebarGroupContent>
