@@ -77,8 +77,16 @@ export function ChatsView() {
               {chats.map((chat) => (
                 <div
                   key={chat.id}
-                  className="group flex items-center justify-between p-4 rounded-lg hover:bg-muted/50 transition-colors cursor-pointer"
+                  role="button"
+                  tabIndex={0}
+                  className="group flex items-center justify-between p-4 rounded-lg border hover:bg-muted/50 transition-colors cursor-pointer focus:outline-none focus:ring-2 focus:ring-ring"
                   onClick={() => router.push(`/chat/${chat.id}`)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault()
+                      router.push(`/chat/${chat.id}`)
+                    }
+                  }}
                 >
                   <div className="min-w-0 flex-1">
                     <p className="font-medium truncate">
