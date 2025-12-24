@@ -25,10 +25,11 @@ export function useApp() {
 
 interface AppShellProps {
   user: SerializedUser | null
+  defaultSidebarOpen?: boolean
   children: React.ReactNode
 }
 
-export function AppShell({ user, children }: AppShellProps) {
+export function AppShell({ user, defaultSidebarOpen, children }: AppShellProps) {
   const [hasApiKey, setHasApiKey] = React.useState<boolean | null>(null)
   const [settingsOpen, setSettingsOpen] = React.useState(false)
 
@@ -51,7 +52,7 @@ export function AppShell({ user, children }: AppShellProps) {
 
   return (
     <AppContext.Provider value={contextValue}>
-      <SidebarProvider>
+      <SidebarProvider defaultOpen={defaultSidebarOpen}>
         <AppSidebar user={user} onOpenSettings={() => setSettingsOpen(true)} />
         <SidebarInset>
           {children}
