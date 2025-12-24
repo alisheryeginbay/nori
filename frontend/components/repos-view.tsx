@@ -120,9 +120,11 @@ export function ReposView() {
 
               {otherRepos.length > 0 && (
                 <div className="space-y-3">
-                  <h2 className="text-sm font-medium text-muted-foreground">
-                    {user && myRepos.length > 0 ? "Other Public Repos" : "Public Repos"}
-                  </h2>
+                  {user && myRepos.length > 0 && (
+                    <h2 className="text-sm font-medium text-muted-foreground">
+                      Other Public Repos
+                    </h2>
+                  )}
                   <div className="space-y-2">
                     {otherRepos.map((repo) => (
                       <RepoCard key={repo.id} repo={repo} />
