@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { getChats, deleteChat, type Chat } from "@/lib/api"
 
