@@ -91,6 +91,7 @@ async def index_repo_stream(
     owner: str,
     repo: str,
     vectorstore: Chroma,
+    user_id: str,
 ) -> AsyncIterator[dict]:
     """Stream repo indexing progress as SSE events."""
     import json
@@ -148,7 +149,7 @@ async def index_repo_stream(
         pass  # Continue anyway if we can't check size
 
     # Create or get repo record
-    await db.create_repo(repo_id)
+    await db.create_repo(repo_id, indexed_by=user_id)
     await db.update_repo_status(repo_id, "indexing")
 
     yield {"event": "status", "data": json.dumps({"stage": "cloning", "progress": 0})}
@@ -262,9 +263,16 @@ async def index_repo_endpoint(
     vectorstore: VectorStoreDep,
 ):
     return EventSourceResponse(
-        index_repo_stream(owner, repo, vectorstore),
+        index_repo_stream(owner, repo, vectorstore, body.user_id),
         media_type="text/event-stream",
     )
+
+
+@app.get("/repos/public")
+async def get_public_repos_endpoint(user_id: str | None = None):
+    """Get all indexed public repos, with user's repos first if user_id provided."""
+    repos = await db.get_public_repos(user_id)
+    return repos
 
 
 @app.get("/repos/{owner}/{repo}")

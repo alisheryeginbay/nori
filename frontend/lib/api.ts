@@ -51,6 +51,15 @@ export interface RecentRepo {
   last_chatted_at: string
 }
 
+export interface PublicRepo {
+  id: string
+  status: "ready"
+  chunks_count: number
+  indexed_at: string
+  indexed_by: string | null
+  created_at: string
+}
+
 // --- User API ---
 
 export async function getUser(userId: string): Promise<UserData> {
@@ -92,6 +101,17 @@ export async function getRecentRepos(userId: string): Promise<RecentRepo[]> {
   const res = await fetch(`${BACKEND_URL}/users/${userId}/recent-repos`)
   if (!res.ok) {
     throw new Error("Failed to fetch recent repos")
+  }
+  return res.json()
+}
+
+export async function getPublicRepos(userId?: string): Promise<PublicRepo[]> {
+  const url = userId
+    ? `${BACKEND_URL}/repos/public?user_id=${encodeURIComponent(userId)}`
+    : `${BACKEND_URL}/repos/public`
+  const res = await fetch(url)
+  if (!res.ok) {
+    throw new Error("Failed to fetch public repos")
   }
   return res.json()
 }
