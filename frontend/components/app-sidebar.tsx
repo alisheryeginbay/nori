@@ -9,6 +9,7 @@ import {
   MoreHorizontalIcon,
   HistoryIcon,
   GithubIcon,
+  GlobeIcon,
 } from "lucide-react"
 import {
   Sidebar,
@@ -119,13 +120,10 @@ export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
       </SidebarHeader>
 
       <SidebarContent>
+        {/* Navigation */}
         <SidebarGroup>
-          <SidebarGroupLabel>
-            <span className="group-data-[collapsible=icon]:hidden">Chats</span>
-          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {/* New Chat button */}
               <SidebarMenuItem>
                 <SidebarMenuButton
                   onClick={() => router.push("/")}
@@ -135,7 +133,27 @@ export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
                   <span>New Chat</span>
                 </SidebarMenuButton>
               </SidebarMenuItem>
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  onClick={() => router.push("/repos")}
+                  isActive={pathname === "/repos"}
+                  tooltip="Public Repos"
+                >
+                  <GlobeIcon className="size-4" />
+                  <span>Public Repos</span>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
 
+        {/* Chats */}
+        <SidebarGroup>
+          <SidebarGroupLabel>
+            <span className="group-data-[collapsible=icon]:hidden">Chats</span>
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
               {/* History button - visible when collapsed */}
               <SidebarMenuItem className="hidden group-data-[collapsible=icon]:block">
                 <SidebarMenuButton

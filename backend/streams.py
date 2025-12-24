@@ -143,7 +143,9 @@ async def stream_chat_response(
     if settings.cohere_api_key:
         try:
             co = cohere.Client(api_key=settings.cohere_api_key)
-            rerank_response = co.rerank(
+            # Run synchronous Cohere client in thread to avoid blocking event loop
+            rerank_response = await asyncio.to_thread(
+                co.rerank,
                 model="rerank-english-v3.0",
                 query=latest_user_message["content"],  # Rerank against original query
                 documents=[doc.page_content for doc in fused_results[:20]],

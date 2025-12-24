@@ -57,6 +57,7 @@ CREATE TABLE IF NOT EXISTS repos (
     chunks_count INT,
     indexed_at TIMESTAMPTZ,
     error TEXT,
+    indexed_by TEXT REFERENCES users(id),
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
 
@@ -83,9 +84,16 @@ CREATE INDEX IF NOT EXISTS idx_messages_chat_id ON messages(chat_id);
 """
 
 
+MIGRATIONS = """
+-- Add indexed_by column if it doesn't exist (for existing DBs)
+ALTER TABLE repos ADD COLUMN IF NOT EXISTS indexed_by TEXT REFERENCES users(id);
+"""
+
+
 async def init_db():
     async with get_connection() as conn:
         await conn.execute(SCHEMA)
+        await conn.execute(MIGRATIONS)
 
 
 # User operations
@@ -197,15 +205,18 @@ async def get_repo(repo_id: str) -> dict | None:
         return dict(row) if row else None
 
 
-async def create_repo(repo_id: str) -> dict:
+async def create_repo(repo_id: str, indexed_by: str | None = None) -> dict:
     async with get_connection() as conn:
         row = await conn.fetchrow(
             """
-            INSERT INTO repos (id, status) VALUES ($1, 'pending')
-            ON CONFLICT (id) DO UPDATE SET status = repos.status
+            INSERT INTO repos (id, status, indexed_by) VALUES ($1, 'pending', $2)
+            ON CONFLICT (id) DO UPDATE SET
+                status = repos.status,
+                indexed_by = COALESCE(repos.indexed_by, EXCLUDED.indexed_by)
             RETURNING *
             """,
             repo_id,
+            indexed_by,
         )
         return dict(row)
 
@@ -263,6 +274,35 @@ async def get_user_recent_repos(user_id: str, limit: int = 6) -> list[dict]:
             user_id,
             limit,
         )
+        return [dict(row) for row in rows]
+
+
+async def get_public_repos(user_id: str | None = None, limit: int = 50) -> list[dict]:
+    """Get all indexed repos, with user's repos first if user_id provided."""
+    async with get_connection() as conn:
+        if user_id:
+            rows = await conn.fetch(
+                """
+                SELECT id, status, chunks_count, indexed_at, indexed_by, created_at
+                FROM repos
+                WHERE status = 'ready'
+                ORDER BY (indexed_by = $1) DESC, indexed_at DESC NULLS LAST
+                LIMIT $2
+                """,
+                user_id,
+                limit,
+            )
+        else:
+            rows = await conn.fetch(
+                """
+                SELECT id, status, chunks_count, indexed_at, indexed_by, created_at
+                FROM repos
+                WHERE status = 'ready'
+                ORDER BY indexed_at DESC NULLS LAST
+                LIMIT $1
+                """,
+                limit,
+            )
         return [dict(row) for row in rows]
 
 
