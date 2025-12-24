@@ -32,7 +32,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { Button } from "@/components/ui/button"
+import { Button, buttonVariants } from "@/components/ui/button"
 import { UserMenu, type SerializedUser } from "@/components/user-menu"
 import { getChats, deleteChat, type Chat } from "@/lib/api"
 
@@ -107,15 +107,16 @@ export function AppSidebar({ user, onOpenSettings }: AppSidebarProps) {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center justify-between px-2 py-1 group-data-[collapsible=icon]:justify-center">
-          <button
+        <div className="flex items-center justify-between p-2">
+          <Button
+            variant="ghost"
+            size="icon-sm"
             onClick={() => router.push("/")}
-            className="flex items-center gap-2 font-semibold text-sm hover:opacity-80 transition-opacity cursor-pointer group-data-[collapsible=icon]:hidden"
+            className="shrink-0 -translate-x-2 cursor-pointer"
           >
-            <img src="/logo.svg" className="size-4" alt="" />
-            <span>Nori</span>
-          </button>
-          <SidebarTrigger />
+            <img src="/logo.svg" className="size-4" alt="Nori" />
+          </Button>
+          <SidebarTrigger className="z-10 text-sidebar-foreground transition-opacity group-data-[collapsible=icon]:absolute group-data-[collapsible=icon]:right-2 group-data-[collapsible=icon]:opacity-0 group-data-[collapsible=icon]:hover:opacity-100" />
         </div>
       </SidebarHeader>
 
